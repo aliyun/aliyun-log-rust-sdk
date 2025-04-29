@@ -12,8 +12,7 @@ documentation = "https://docs.rs/aliyun-log-sdk-protobuf"
 
 [dependencies]
 getset = "0.1.4"
-prost = {version = "0.13.5", optional = true}
-quick-protobuf = { version = "0.8.1", optional = true}
+quick-protobuf = "0.8.1"
 thiserror = "2.0.12"
 
 [build-dependencies]
@@ -21,16 +20,13 @@ prost-build = "0.13.5"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
-quick-protobuf = "0.8.1"
 prost = "0.13.5"
+prost-build = "0.13.5"
+protoc-bin-vendored = "3.1.0"
 
 [[bench]]
 name = "proto"
 harness = false
 
-[features]
-default = ["quick-protobuf"]
-quick-protobuf = ["dep:quick-protobuf"]
-prost = ["dep:prost"]
 
 

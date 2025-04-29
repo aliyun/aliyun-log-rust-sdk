@@ -45,7 +45,7 @@ pub struct LogGroupList {
 ///     .add_content_kv("hello", "world");
 /// log_group
 ///     .add_log(log)
-///     .add_log_tag(("tagKey", "tagValue").into());
+///     .add_log_tag_kv("tagKey", "tagValue");
 /// println!("{:?}", log_group);
 /// ```
 #[derive(Default, Clone, PartialEq, Debug, Getters, MutGetters, Setters)]

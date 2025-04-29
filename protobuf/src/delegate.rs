@@ -10,7 +10,7 @@ impl<'a> internal::LogGroupList<'a> {
     pub(crate) fn from_bytes(bytes: &'a [u8]) -> crate::error::Result<Self, crate::Error> {
         let mut reader = BytesReader::from_bytes(bytes);
         internal::LogGroupList::from_reader(&mut reader, bytes)
-            .map_err(|e| crate::Error::Decode(DecodeError::Quick(e)))
+            .map_err(|e| crate::Error::Decode(DecodeError::from(e)))
     }
 }
 
@@ -19,7 +19,7 @@ impl internal::LogGroup<'_> {
         let mut buf = Vec::new();
         let mut writer = Writer::new(&mut buf);
         self.write_message(&mut writer)
-            .map_err(|e| crate::Error::Encode(EncodeError::Quick(e)))?;
+            .map_err(|e| crate::Error::Encode(EncodeError::from(e)))?;
         Ok(buf)
     }
 }

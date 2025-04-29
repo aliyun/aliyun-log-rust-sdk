@@ -1,7 +1,10 @@
-### Description
+# aliyun-log-sdk-sign
+## Description
 This crate is used to generate signature for aliyun log service.
 
-### Usage
+For more [Documents](https://docs.rs/aliyun-log-sdk-sign).
+
+## Quick Start
 Add this crate to your Cargo.toml using the following command:
 ```bash
 cargo add aliyun-log-sdk-sign
@@ -41,5 +44,3 @@ if let Err(err) = signature_result {
 }
 ```
 
-### Documentation
-See [here](https://docs.rs/aliyun-log-sdk-sign).
