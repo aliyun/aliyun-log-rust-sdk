@@ -28,8 +28,8 @@ impl crate::client::Client {
     /// ## Basic usage:
     ///
     /// ```
-    /// # async fn example(client: aliyun_log_sdk::Client) -> Result<(), aliyun_log_sdk::Error> {
-    /// use aliyun_log_sdk::get_cursor_models::CursorPos;
+    /// # async fn example(client: aliyun_log_rust_sdk::Client) -> Result<(), aliyun_log_rust_sdk::Error> {
+    /// use aliyun_log_rust_sdk::get_cursor_models::CursorPos;
     /// let shard_id = 0;
     ///
     /// // First, get a cursor for a shard
@@ -66,8 +66,8 @@ impl crate::client::Client {
     /// ## Advanced usage with cursor range:
     ///
     /// ```
-    /// # async fn example(client: aliyun_log_sdk::Client) -> Result<(), aliyun_log_sdk::Error> {
-    /// use aliyun_log_sdk::get_cursor_models::CursorPos;
+    /// # async fn example(client: aliyun_log_rust_sdk::Client) -> Result<(), aliyun_log_rust_sdk::Error> {
+    /// use aliyun_log_rust_sdk::get_cursor_models::CursorPos;
     /// let shard_id = 0; // Shard ID to pull logs from
     /// // Get start and end cursors (for a time range)
     /// let resp = client.get_cursor("my-project", "my-logstore", shard_id)

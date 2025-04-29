@@ -21,7 +21,7 @@ impl crate::client::Client {
     /// Basic usage:
     ///
     /// ```
-    /// # async fn example(client: aliyun_log_sdk::Client) -> Result<(), aliyun_log_sdk::Error> {
+    /// # async fn example(client: aliyun_log_rust_sdk::Client) -> Result<(), aliyun_log_rust_sdk::Error> {
     /// // List all shards in the specified logstore
     /// let resp = client.list_shards("my-project", "my-logstore").send().await?;
     /// println!("Found {} shards", resp.get_body().shards().len());

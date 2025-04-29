@@ -23,8 +23,8 @@ impl crate::client::Client {
     /// Basic query with time range, offset, limit, and filter:
     ///
     /// ```
-    /// # async fn example(client: aliyun_log_sdk::Client) -> Result<(), aliyun_log_sdk::Error> {
-    /// use aliyun_log_sdk::GetLogsRequest;
+    /// # async fn example(client: aliyun_log_rust_sdk::Client) -> Result<(), aliyun_log_rust_sdk::Error> {
+    /// use aliyun_log_rust_sdk::GetLogsRequest;
     /// use chrono::Utc;
     ///
     /// let now = Utc::now().timestamp();

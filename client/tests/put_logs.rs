@@ -3,8 +3,8 @@ mod common;
 #[cfg(test)]
 mod tests {
     use crate::common::*;
-    use aliyun_log_sdk::Client;
-    use aliyun_log_sdk::*;
+    use aliyun_log_rust_sdk::Client;
+    use aliyun_log_rust_sdk::*;
     use aliyun_log_sdk_protobuf::Log;
     use aliyun_log_sdk_protobuf::LogGroup;
     use lazy_static::lazy_static;
