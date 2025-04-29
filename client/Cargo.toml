@@ -8,6 +8,8 @@ repository = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/master/client"
 documentation = "https://docs.rs/aliyun-log-rust-sdk"
 keywords = ["aliyun", "sls", "sdk", "log"]
 autobenches = false
+description = "Rust sdk for Aliyun Log Service"
+license = "MIT"
 
 [dependencies]
 aliyun-log-sdk-protobuf = { version = "0.1.1", path = "../protobuf" }
