@@ -6,7 +6,7 @@ This crate is rust sdk for access Aliyun Log Service.
 
 - client: [client](client/README.md) for access Aliyun Log Service
 
-For more [Documents](https://crates.io/crates/aliyun-log-rust-sdk).
+For more [Documents](https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html).
 
 ## Quick Start
 

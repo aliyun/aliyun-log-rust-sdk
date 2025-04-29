@@ -2,7 +2,7 @@
 This crate is rust sdk for access Aliyun Log Service.  
 This SDK uses [tokio](https://docs.rs/tokio/latest/tokio/) as async runtime.  
 
-For more [Documents](https://crates.io/crates/aliyun-log-rust-sdk).
+For more [Documents](https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html).
 
 ## Quick Start
 
@@ -24,11 +24,11 @@ use chrono::Utc;
 let now = Utc::now().timestamp();
 let one_hour_ago = now - 3600;
 let resp = client.get_logs("my-project", "my-logstore")
-        .from(one_hour_ago)         // Start time (required)
-        .to(now)                    // End time (required)
-        .query("level:ERROR")       // Filter for error logs only
-        .offset(0)                  // Start from the first log
-       .lines(100)                 // Return up to 100 logs
-       .send()
-       .await?;
+    .from(one_hour_ago)         // Start time (required)
+    .to(now)                    // End time (required)
+    .query("level:ERROR")       // Filter for error logs only
+    .offset(0)                  // Start from the first log
+    .lines(100)                 // Return up to 100 logs
+    .send()
+    .await?;
 ```
