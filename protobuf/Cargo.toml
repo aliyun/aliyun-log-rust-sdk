@@ -11,7 +11,7 @@ keywords = ["aliyun", "sls", "protobuf", "alibabacloud"]
 documentation = "https://docs.rs/aliyun-log-sdk-protobuf"
 
 [dependencies]
-getset = "0.1.4"
+getset = "0.1.5"
 quick-protobuf = "0.8.1"
 thiserror = "2.0.12"
 
