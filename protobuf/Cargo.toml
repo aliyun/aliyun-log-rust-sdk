@@ -1,14 +1,14 @@
 [package]
 name = "aliyun-log-sdk-protobuf"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Aliyun Log Service"]
 description = "A crate to serialize log data for Aliyun Log Service."
 license = "MIT"
 keywords = ["aliyun", "sls", "protobuf", "alibabacloud"]
 documentation = "https://docs.rs/aliyun-log-sdk-protobuf"
-homepage = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/protobuf"
-repository = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/protobuf"
+homepage = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/master/protobuf"
+repository = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/master/protobuf"
 autobenches = false
 
 [dependencies]

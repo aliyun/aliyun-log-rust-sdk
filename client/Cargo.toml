@@ -3,15 +3,15 @@ name = "aliyun-log-rust-sdk"
 version = "0.1.0"
 edition = "2021"
 authors = ["Aliyun Log Service"]
-homepage = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/client"
-repository = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/client"
+homepage = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/master/client"
+repository = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/master/client"
 documentation = "https://docs.rs/aliyun-log-rust-sdk"
 keywords = ["aliyun", "sls", "sdk", "log"]
 autobenches = false
 
 [dependencies]
-aliyun-log-sdk-protobuf = { version = "0.1.0", path = "../protobuf" }
-aliyun-log-sdk-sign = { version = "0.2.0", path = "../sign" }
+aliyun-log-sdk-protobuf = { version = "0.1.1", path = "../protobuf" }
+aliyun-log-sdk-sign = { version = "0.2.1", path = "../sign" }
 thiserror = "2.0.12"
 anyhow = "1.0.98"
 lazy_static = "1.5.0"

@@ -1,6 +1,6 @@
 [package]
 name = "aliyun-log-sdk-sign"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 authors = ["Aliyun Log Service"]
 description = "A crate to calculate signature for HTTP request to Aliyun Log Service."
@@ -8,8 +8,8 @@ license = "MIT"
 readme = "README.md"
 keywords = ["aliyun", "sls", "signature", "alibabacloud"]
 documentation = "https://docs.rs/aliyun-log-sdk-protobuf"
-homepage = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/sign"
-repository = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/sign"
+homepage = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/master/sign"
+repository = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/master/sign"
 autobenches = false
 
 [dependencies]
