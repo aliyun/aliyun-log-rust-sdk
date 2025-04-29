@@ -19,4 +19,8 @@ jobs:
     - name: Build
       run: cargo build --verbose
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test --verbose --lib
+    - name: Run doc test
+      run: cargo test --verbose --doc
+    - name: build integration tests
+      run: cargo test --test '*' --no-run
