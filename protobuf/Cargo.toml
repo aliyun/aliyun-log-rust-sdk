@@ -1,0 +1,36 @@
+[package]
+name = "aliyun-log-sdk-protobuf"
+version = "0.1.0"
+edition = "2021"
+authors = ["Aliyun Log Service"]
+description = "A crate to serialize log data for Aliyun Log Service."
+license = "MIT"
+repository = "https://github.com/crimson-gao/aliyun-log-sdk-protobuf"
+readme = "README.md"
+keywords = ["aliyun", "sls", "protobuf", "alibabacloud"]
+documentation = "https://docs.rs/aliyun-log-sdk-protobuf"
+
+[dependencies]
+getset = "0.1.4"
+prost = {version = "0.13.5", optional = true}
+quick-protobuf = { version = "0.8.1", optional = true}
+thiserror = "2.0.12"
+
+[build-dependencies]
+prost-build = "0.13.5"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+quick-protobuf = "0.8.1"
+prost = "0.13.5"
+
+[[bench]]
+name = "proto"
+harness = false
+
+[features]
+default = ["quick-protobuf"]
+quick-protobuf = ["dep:quick-protobuf"]
+prost = ["dep:prost"]
+
+
