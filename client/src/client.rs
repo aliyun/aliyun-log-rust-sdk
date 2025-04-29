@@ -40,8 +40,8 @@ pub use put_logs_raw::*;
 ///
 /// A simple example of creating a new client:
 /// ```
-/// # async fn wrapper() -> aliyun_log_sdk::Result<()> {
-/// use aliyun_log_sdk::{Client, Config, FromConfig};
+/// # async fn wrapper() -> aliyun_log_rust_sdk::Result<()> {
+/// use aliyun_log_rust_sdk::{Client, Config, FromConfig};
 /// let config = Config::builder()
 ///     .endpoint("cn-hangzhou.log.aliyuncs.com")
 ///     .access_key("access_key_id", "access_key_secret")
@@ -53,8 +53,8 @@ pub use put_logs_raw::*;
 ///
 /// Example of creating a new client with security token and request_timeout:
 /// ```
-/// # async fn wrapper() -> aliyun_log_sdk::Result<()> {
-/// use aliyun_log_sdk::{Client, Config, FromConfig};
+/// # async fn wrapper() -> aliyun_log_rust_sdk::Result<()> {
+/// use aliyun_log_rust_sdk::{Client, Config, FromConfig};
 /// let config = Config::builder()
 ///     .endpoint("cn-hangzhou.log.aliyuncs.com")
 ///     .sts("access_key_id", "access_key_secret", "security_token")

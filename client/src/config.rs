@@ -8,13 +8,13 @@ use regex::Regex;
 /// # Examples
 ///
 /// ```
-/// # async fn wrapper() -> aliyun_log_sdk::Result<()> {
-/// use aliyun_log_sdk::FromConfig;
-/// let config = aliyun_log_sdk::Config::builder()
+/// # async fn wrapper() -> aliyun_log_rust_sdk::Result<()> {
+/// use aliyun_log_rust_sdk::FromConfig;
+/// let config = aliyun_log_rust_sdk::Config::builder()
 ///     .endpoint("cn-hangzhou.log.aliyuncs.com")
 ///     .access_key("access_key_id", "access_key_secret")
 ///     .build()?;
-/// let client = aliyun_log_sdk::Client::from_config(config)?;
+/// let client = aliyun_log_rust_sdk::Client::from_config(config)?;
 /// # Ok(())
 /// # }
 /// ```
@@ -43,15 +43,15 @@ impl Config {
 /// # Examples
 ///
 /// ```
-/// # async fn wrapper() -> aliyun_log_sdk::Result<()> {
-/// use aliyun_log_sdk::FromConfig;
-/// let config = aliyun_log_sdk::Config::builder()
+/// # async fn wrapper() -> aliyun_log_rust_sdk::Result<()> {
+/// use aliyun_log_rust_sdk::FromConfig;
+/// let config = aliyun_log_rust_sdk::Config::builder()
 ///     .endpoint("cn-hangzhou.log.aliyuncs.com")
 ///     .access_key("access_key_id", "access_key_secret")
 ///     .request_timeout(std::time::Duration::from_secs(60))
 ///     .connection_timeout(std::time::Duration::from_secs(10))
 ///     .build()?;
-/// let client = aliyun_log_sdk::Client::from_config(config)?;
+/// let client = aliyun_log_rust_sdk::Client::from_config(config)?;
 /// # Ok(())
 /// # }
 /// ```

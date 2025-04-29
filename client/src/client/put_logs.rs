@@ -22,7 +22,7 @@ impl crate::client::Client {
     /// Basic usage with a single log entry:
     ///
     /// ```
-    /// # async fn example(client: aliyun_log_sdk::Client) -> Result<(), aliyun_log_sdk::Error> {
+    /// # async fn example(client: aliyun_log_rust_sdk::Client) -> Result<(), aliyun_log_rust_sdk::Error> {
     /// use aliyun_log_sdk_protobuf::{Log, LogGroup};
     ///
     /// let mut log = Log::from_unixtime(chrono::Utc::now().timestamp() as u32);

@@ -6,19 +6,19 @@ This crate is rust sdk for access Aliyun Log Service.
 
 - client: [client](client/README.md) for access Aliyun Log Service
 
-For more [Documents](https://crates.io/crates/aliyun-log-sdk).
+For more [Documents](https://crates.io/crates/aliyun-log-rust-sdk).
 
 ## Quick Start
 
 1. Add this crate to your Cargo.toml using the following command:
 
 ```bash
-cargo add aliyun-log-sdk
+cargo add aliyun-log-rust-sdk
 ```
 
 2. Create a client
 ```rust
-use aliyun_log_sdk::{Client, Config, FromConfig};
+use aliyun_log_rust_sdk::{Client, Config, FromConfig};
 let config = Config::builder()
     .endpoint("cn-hangzhou.log.aliyuncs.com")
     .access_key("access_key_id", "access_key_secret")
@@ -29,7 +29,7 @@ let client = Client::from_config(config)?;
 3. Send a request
 
 ```rust
-use aliyun_log_sdk::GetLogsRequest;
+use aliyun_log_rust_sdk::GetLogsRequest;
 use chrono::Utc;
 let now = Utc::now().timestamp();
 let one_hour_ago = now - 3600;
