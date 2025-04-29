@@ -5,10 +5,12 @@ edition = "2021"
 authors = ["Aliyun Log Service"]
 description = "A crate to calculate signature for HTTP request to Aliyun Log Service."
 license = "MIT"
-repository = "https://github.com/aliyun/aliyun-log-sdk-sign"
 readme = "README.md"
 keywords = ["aliyun", "sls", "signature", "alibabacloud"]
-documentation = "https://docs.rs/aliyun-log-sdk-sign"
+documentation = "https://docs.rs/aliyun-log-sdk-protobuf"
+homepage = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/sign"
+repository = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/sign"
+autobenches = false
 
 [dependencies]
 base64 = "0.22.1"

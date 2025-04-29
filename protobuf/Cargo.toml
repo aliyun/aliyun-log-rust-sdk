@@ -5,10 +5,11 @@ edition = "2021"
 authors = ["Aliyun Log Service"]
 description = "A crate to serialize log data for Aliyun Log Service."
 license = "MIT"
-repository = "https://github.com/crimson-gao/aliyun-log-sdk-protobuf"
-readme = "README.md"
 keywords = ["aliyun", "sls", "protobuf", "alibabacloud"]
 documentation = "https://docs.rs/aliyun-log-sdk-protobuf"
+homepage = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/protobuf"
+repository = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/protobuf"
+autobenches = false
 
 [dependencies]
 getset = "0.1.5"
@@ -27,6 +28,3 @@ protoc-bin-vendored = "3.1.0"
 [[bench]]
 name = "proto"
 harness = false
-
-
-

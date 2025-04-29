@@ -1,7 +1,5 @@
 [workspace]
 
-members = [
-    "client", "sign", "protobuf",
-]
+members = ["client", "sign", "protobuf"]
 
 resolver = "2"
