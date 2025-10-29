@@ -73,7 +73,10 @@ impl GetConsumerGroupCheckpointRequestBuilder {
         })
     }
 
-    /// Optional, the shard ID to get the checkpoint for, if not specified, all checkpoints will be returned
+    /// Set the shard ID to get the checkpoint for (optional).
+    ///
+    /// If specified, only the checkpoint for this shard will be returned.
+    /// If not specified, checkpoints for all shards will be returned.
     pub fn shard_id(mut self, shard_id: i32) -> Self {
         self.shard_id = Some(shard_id);
         self

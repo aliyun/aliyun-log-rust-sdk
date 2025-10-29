@@ -14,7 +14,6 @@ impl crate::client::Client {
     /// * `project` - The name of the project containing the logstore
     /// * `logstore` - The name of the logstore containing the consumer group
     /// * `consumer_group` - The name of the consumer group
-    /// * `request` - The checkpoint update request
     ///
     /// # Examples
     ///
@@ -22,7 +21,6 @@ impl crate::client::Client {
     ///
     /// ```
     /// # async fn example(client: aliyun_log_rust_sdk::Client) -> Result<(), aliyun_log_rust_sdk::Error> {
-    ///
     /// let resp = client
     ///     .update_consumer_group_checkpoint("my-project", "my-logstore", "my-consumer-group")
     ///     .shard_id(0)
@@ -75,21 +73,38 @@ impl UpdateCheckpointRequestBuilder {
         })
     }
 
+    /// Set the shard ID for which to update the checkpoint (required).
+    ///
+    /// Each shard has its own checkpoint to track consumption progress independently.
     pub fn shard_id(mut self, shard_id: i32) -> Self {
         self.shard_id = Some(shard_id);
         self
     }
 
+    /// Set the checkpoint value (required).
+    ///
+    /// This should be a valid cursor value obtained from `get_cursor` or `pull_logs`.
+    /// The checkpoint marks the position up to which logs have been successfully consumed.
+    /// The checkpoint is the next position to consume.
     pub fn checkpoint(mut self, checkpoint: impl AsRef<str>) -> Self {
         self.checkpoint = Some(checkpoint.as_ref().to_string());
         self
     }
 
+    /// Set whether to force the checkpoint update to succeed (optional, defaults to `false`).
+    ///
+    /// When set to `true`, the checkpoint will be updated even if the consumer doesn't
+    /// currently own the shard. Use with caution as this can lead to duplicate processing
+    /// if multiple consumers update the same checkpoint.
     pub fn force_success(mut self, force_success: bool) -> Self {
         self.force_success = Some(force_success);
         self
     }
 
+    /// Set the consumer identifier (required).
+    ///
+    /// This identifies which consumer is updating the checkpoint.
+    /// Only the consumer that owns a shard should normally update its checkpoint.
     pub fn consumer_id(mut self, consumer_id: impl AsRef<str>) -> Self {
         self.consumer_id = Some(consumer_id.as_ref().to_string());
         self
@@ -135,9 +150,9 @@ struct UpdateCheckpointRequest {
 }
 
 impl Request for UpdateCheckpointRequest {
-    type ResponseBody = ();
     const HTTP_METHOD: http::Method = http::Method::POST;
     const CONTENT_TYPE: Option<http::HeaderValue> = Some(LOG_JSON);
+    type ResponseBody = ();
 
     fn project(&self) -> Option<&str> {
         Some(&self.project)

@@ -1,19 +1,7 @@
 use super::*;
 use crate::RequestErrorKind;
 use getset::Getters;
-use serde::{Deserialize, Serialize};
-
-// Models for heartbeat functionality
-pub mod heartbeat_models {
-    use super::*;
-
-    /// Request for consumer heartbeat
-    #[derive(Debug, Clone, Serialize, Deserialize)]
-    pub struct HeartbeatRequest {
-        /// Name/identifier of the consumer
-        pub consumer: String,
-    }
-}
+use serde::Deserialize;
 
 impl crate::client::Client {
     /// Send a heartbeat for a consumer group.
@@ -79,13 +67,18 @@ impl ConsumerGroupHeartbeatRequestBuilder {
         })
     }
 
-    /// Required, the consumerId in the consumer group
+    /// Set the consumer identifier (required).
+    ///
+    /// This is the unique identifier of the consumer within the consumer group.
     pub fn consumer(mut self, consumer: impl AsRef<str>) -> Self {
         self.consumer = Some(consumer.as_ref().to_string());
         self
     }
 
-    /// Optional, the current held shards of the consumer
+    /// Set the list of shards currently held by this consumer (optional).
+    ///
+    /// This allows the server to track which shards are assigned to this consumer.
+    /// If not specified, an empty list will be sent.
     pub fn shards(mut self, shards: Vec<i32>) -> Self {
         self.shards = shards;
         self
@@ -113,9 +106,9 @@ struct ConsumerGroupHeartbeatRequest {
 }
 
 impl Request for ConsumerGroupHeartbeatRequest {
-    type ResponseBody = ConsumerGroupHeartbeatResponse;
     const HTTP_METHOD: http::Method = http::Method::POST;
     const CONTENT_TYPE: Option<http::HeaderValue> = Some(LOG_JSON);
+    type ResponseBody = ConsumerGroupHeartbeatResponse;
 
     fn project(&self) -> Option<&str> {
         Some(&self.project)

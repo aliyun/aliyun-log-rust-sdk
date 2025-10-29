@@ -66,13 +66,19 @@ impl UpdateConsumerGroupRequestBuilder {
         })
     }
 
-    /// Required, the heartbeat timeout in seconds
+    /// Set the heartbeat timeout in seconds (required).
+    ///
+    /// Consumers must send heartbeats within this timeout period to maintain ownership of shards.
+    /// If a consumer fails to send heartbeats within this period, its shards may be reassigned.
     pub fn timeout(mut self, timeout: i32) -> Self {
         self.timeout = Some(timeout);
         self
     }
 
-    /// Required, whether to consume in order
+    /// Set whether to consume logs in order (required).
+    ///
+    /// When set to `true`, new shards will not be assigned until the shard they are split from is consumed completely.
+    /// When set to `false`, the shards will be assigned instantly after creation.
     pub fn order(mut self, order: bool) -> Self {
         self.order = Some(order);
         self
@@ -105,9 +111,9 @@ struct UpdateConsumerGroupRequest {
 }
 
 impl Request for UpdateConsumerGroupRequest {
-    type ResponseBody = ();
     const HTTP_METHOD: http::Method = http::Method::PUT;
     const CONTENT_TYPE: Option<http::HeaderValue> = Some(LOG_JSON);
+    type ResponseBody = ();
 
     fn project(&self) -> Option<&str> {
         Some(&self.project)
