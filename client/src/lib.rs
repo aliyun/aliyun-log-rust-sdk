@@ -10,3 +10,4 @@ pub use client::*;
 pub use config::{Config, ConfigBuilder};
 mod request;
 mod response;
+mod macros;

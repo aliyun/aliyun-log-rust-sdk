@@ -58,14 +58,19 @@ impl PutLogsRawRequestBuilder {
     }
 
     fn build(self) -> BuildResult<PutLogsRawRequest> {
+        check_required!(
+            ("data", self.data),
+            ("raw_size", self.raw_size),
+            ("compress_type", self.compress_type)
+        );
         Ok((
             self.handle,
             PutLogsRawRequest {
                 path: self.path,
                 project: self.project,
-                data: require_param("data", self.data)?,
-                raw_size: require_param("raw_size", self.raw_size)?,
-                compress_type: require_param("compress_type", self.compress_type)?,
+                data: self.data.unwrap(),
+                raw_size: self.raw_size.unwrap(),
+                compress_type: self.compress_type.unwrap(),
             },
         ))
     }

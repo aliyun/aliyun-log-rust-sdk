@@ -83,7 +83,9 @@ impl crate::client::Client {
 
 #[derive(Serialize)]
 pub struct GetLogsRequest {
+    #[serde(skip_serializing)]
     project: String,
+    #[serde(skip_serializing)]
     path: String,
 
     from: i64,
@@ -240,14 +242,7 @@ impl GetLogsRequestBuilder {
     }
 
     fn build(self) -> BuildResult<GetLogsRequest> {
-        if self.from.is_none() {
-            return Err(RequestErrorKind::MissingRequiredParameter(
-                "from".to_string(),
-            ))?;
-        }
-        if self.to.is_none() {
-            return Err(RequestErrorKind::MissingRequiredParameter("to".to_string()))?;
-        }
+        check_required!(("from", self.from), ("to", self.to));
 
         Ok((
             self.handle,

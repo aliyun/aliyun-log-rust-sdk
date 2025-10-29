@@ -19,6 +19,8 @@ use crate::{
     error::{Error, Result},
 };
 
+pub(crate) use crate::macros::*;
+
 mod pull_logs;
 pub use pull_logs::*;
 mod put_logs;
@@ -33,6 +35,7 @@ use crate::response::{DecompressedResponse, FromHttpResponse, Response};
 pub use get_logs::*;
 mod put_logs_raw;
 pub use put_logs_raw::*;
+
 
 /// Aliyun Log Service client
 ///
@@ -223,7 +226,7 @@ impl Handle {
             http::Method::PUT => self.http_client.put(url.clone()),
             http::Method::DELETE => self.http_client.delete(url.clone()),
             _ => {
-                panic!("Unsupported HTTP method: {:?}", method);
+                panic!("Unsupported HTTP method: {method:?}");
             }
         };
 
@@ -289,11 +292,11 @@ impl Handle {
     ) -> Result<url::Url, ConfigError> {
         let result = match query_params {
             Some(query_params) if query_params.is_empty() => {
-                url::Url::parse(&format!("{}{}", host, path))
+                url::Url::parse(&format!("{host}{path}"))
             }
-            None => url::Url::parse(&format!("{}{}", host, path)),
+            None => url::Url::parse(&format!("{host}{path}")),
             Some(query_params) => {
-                url::Url::parse_with_params(&format!("{}{}", host, path), query_params)
+                url::Url::parse_with_params(&format!("{host}{path}"), query_params)
             }
         };
         Ok(result?)
@@ -356,10 +359,3 @@ pub type BoxFuture<T> =
     ::std::pin::Pin<::std::boxed::Box<dyn ::std::future::Future<Output = T> + ::std::marker::Send>>;
 
 pub type ResponseResultBoxFuture<B> = BoxFuture<Result<Response<B>, Error>>;
-
-pub(crate) fn require_param<T>(
-    name: &'static str,
-    data: Option<T>,
-) -> std::result::Result<T, RequestError> {
-    data.ok_or_else(|| RequestErrorKind::MissingRequiredParameter(name.to_string()).into())
-}
