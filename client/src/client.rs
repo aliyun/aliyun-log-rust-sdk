@@ -18,6 +18,8 @@ use crate::{
     compress::{compress, decompress, CompressType},
     error::{Error, Result},
 };
+mod consumer_group;
+pub use consumer_group::*;
 
 pub(crate) use crate::macros::*;
 
@@ -35,7 +37,6 @@ use crate::response::{DecompressedResponse, FromHttpResponse, Response};
 pub use get_logs::*;
 mod put_logs_raw;
 pub use put_logs_raw::*;
-
 
 /// Aliyun Log Service client
 ///

@@ -8,6 +8,6 @@ mod utils;
 pub use self::error::*;
 pub use client::*;
 pub use config::{Config, ConfigBuilder};
+mod macros;
 mod request;
 mod response;
-mod macros;

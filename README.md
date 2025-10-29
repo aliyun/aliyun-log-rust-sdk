@@ -1,6 +1,5 @@
 
-
-# Rust SDK for Aliyun Log Service 
+# Rust SDK for Aliyun Log Service
 
 This crate is rust sdk for access Aliyun Log Service.  
 
@@ -17,6 +16,7 @@ cargo add aliyun-log-rust-sdk
 ```
 
 2. Create a client
+
 ```rust
 use aliyun_log_rust_sdk::{Client, Config, FromConfig};
 let config = Config::builder()

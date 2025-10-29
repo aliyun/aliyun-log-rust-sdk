@@ -1,4 +1,3 @@
-
 macro_rules! check_required {
     ($(($name:expr, $value:expr)),* $(,)?) => {
         {
