@@ -4,6 +4,7 @@ use serde::Deserialize;
 
 #[cfg(test)]
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)]
 pub struct TestEnvironment {
     pub access_key_id: String,
     pub access_key_secret: String,
