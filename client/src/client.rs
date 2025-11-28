@@ -27,6 +27,9 @@ pub use project::*;
 mod logstore;
 pub use logstore::*;
 
+mod index;
+pub use index::*;
+
 pub(crate) use crate::macros::*;
 
 mod pull_logs;
