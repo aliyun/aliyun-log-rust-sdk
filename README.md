@@ -6,7 +6,7 @@ This is Rust SDK for accessing Aliyun Log Service.
 
 [![crates-badge](https://img.shields.io/crates/v/aliyun-log-rust-sdk.svg)](https://crates.io/crates/aliyun-log-rust-sdk)   ![mit-badge](https://img.shields.io/badge/license-MIT-blue.svg)  [![Ci](https://github.com/aliyun/aliyun-log-rust-sdk/actions/workflows/rust.yml/badge.svg)](https://github.com/aliyun/aliyun-log-rust-sdk/actions/workflows/rust.yml)
 
-[API List](docs/api_cn.rst) | [Docs](https://docs.rs/tokio/latest/tokio)
+[API List](docs/api.rst) | [Docs](https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/)
 
 ## Quick Start
 

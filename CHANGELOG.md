@@ -11,6 +11,13 @@
   - `get_project` - Get detailed project information
   - `list_projects` - List projects with pagination and filtering support
 
+- **Logstore Management APIs**: Complete support for logstore management
+  - `create_logstore` - Create a new logstore with shard count, TTL, and advanced configurations
+  - `update_logstore` - Update logstore settings including TTL, encryption, and storage tiers
+  - `delete_logstore` - Delete a logstore and all its data
+  - `get_logstore` - Get detailed logstore information and configuration
+  - `list_logstores` - List logstores with pagination and filtering support
+
 - **Consumer Group APIs**: Complete support for consumer group management
   - `create_consumer_group` - Create a consumer group for coordinated log consumption
   - `update_consumer_group` - Update consumer group configuration

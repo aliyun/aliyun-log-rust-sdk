@@ -24,6 +24,9 @@ pub use consumer_group::*;
 mod project;
 pub use project::*;
 
+mod logstore;
+pub use logstore::*;
+
 pub(crate) use crate::macros::*;
 
 mod pull_logs;

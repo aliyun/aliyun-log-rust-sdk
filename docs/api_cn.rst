@@ -23,6 +23,17 @@ Client 配置
 * `get_project <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.get_project>`_ - 获取项目的详细信息，包括创建时间、状态等
 * `list_projects <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.list_projects>`_ - 列出所有项目，支持分页和按名称、描述、资源组等过滤
 
+Logstore 管理
+-------------
+
+用于管理 Logstore 的 API，Logstore 是日志存储、查询和分析的单元。
+
+* `create_logstore <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.create_logstore>`_ - 创建新的 Logstore，支持配置分片数、TTL、加密、自动分裂等
+* `update_logstore <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.update_logstore>`_ - 更新 Logstore 的配置，如 TTL、加密、热存储等
+* `delete_logstore <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.delete_logstore>`_ - 删除 Logstore 及其所有数据
+* `get_logstore <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.get_logstore>`_ - 获取 Logstore 的详细信息，包括配置和统计数据
+* `list_logstores <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.list_logstores>`_ - 列出项目中的所有 Logstore，支持分页和按名称、类型等过滤
+
 
 日志操作
 --------
