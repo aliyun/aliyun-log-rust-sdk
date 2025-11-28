@@ -21,6 +21,9 @@ use crate::{
 mod consumer_group;
 pub use consumer_group::*;
 
+mod project;
+pub use project::*;
+
 pub(crate) use crate::macros::*;
 
 mod pull_logs;
@@ -117,6 +120,20 @@ impl Handle {
         }
 
         let body = self.get_request_body(&request, &mut headers)?;
+        if !headers.contains_key(LOG_BODY_RAW_SIZE) {
+            let body_len = match body {
+                None => 0,
+                Some(ref b) => b.len(),
+            };
+
+            headers.insert(
+                LOG_BODY_RAW_SIZE,
+                body_len
+                    .to_string()
+                    .parse()
+                    .expect("fail to inser bodyRawSize into header"),
+            );
+        }
 
         let resp = self
             .send_http(method, host, path, query_params, body, headers)

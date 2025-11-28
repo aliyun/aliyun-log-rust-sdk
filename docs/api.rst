@@ -11,6 +11,18 @@ Client Configuration
 For client configuration options, see the `Client <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html>`_ and `Config <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Config.html>`_ documentation.
 
 
+Project Management
+------------------
+
+APIs for managing projects, which are the top-level resource units in Log Service.
+
+* `create_project <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.create_project>`_ - Create a new project with a globally unique name
+* `update_project <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.update_project>`_ - Update project description and recycle bin settings
+* `delete_project <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.delete_project>`_ - Delete a project and all its associated resources
+* `get_project <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.get_project>`_ - Get detailed project information including creation time and status
+* `list_projects <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.list_projects>`_ - List all projects with pagination and filtering by name, description, or resource group
+
+
 Log Operations
 --------------
 

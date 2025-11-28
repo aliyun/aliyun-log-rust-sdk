@@ -12,6 +12,18 @@ Client 配置
 有关客户端配置选项，请参阅 `Client <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html>`_ 与 `Config <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Config.html>`_ 文档。
 
 
+项目管理
+--------
+
+用于管理日志项目的 API，项目是日志服务的最顶层资源单元。
+
+* `create_project <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.create_project>`_ - 创建新的项目，项目名称必须全局唯一
+* `update_project <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.update_project>`_ - 更新项目描述和回收站等配置
+* `delete_project <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.delete_project>`_ - 删除项目及其所有相关资源
+* `get_project <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.get_project>`_ - 获取项目的详细信息，包括创建时间、状态等
+* `list_projects <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.list_projects>`_ - 列出所有项目，支持分页和按名称、描述、资源组等过滤
+
+
 日志操作
 --------
 
