@@ -22,6 +22,17 @@ APIs for managing projects, which are the top-level resource units in Log Servic
 * `get_project <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.get_project>`_ - Get detailed project information including creation time and status
 * `list_projects <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.list_projects>`_ - List all projects with pagination and filtering by name, description, or resource group
 
+Logstore Management
+-------------------
+
+APIs for managing logstores, which are units for log storage, querying, and analysis.
+
+* `create_logstore <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.create_logstore>`_ - Create a new logstore with shard count, TTL, encryption, and auto-split configuration
+* `update_logstore <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.update_logstore>`_ - Update logstore settings including TTL, encryption, and storage tiers
+* `delete_logstore <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.delete_logstore>`_ - Delete a logstore and all its data
+* `get_logstore <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.get_logstore>`_ - Get detailed logstore information including configuration and statistics
+* `list_logstores <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.list_logstores>`_ - List all logstores in a project with pagination and filtering by name, type, or mode
+
 
 Log Operations
 --------------
