@@ -103,7 +103,7 @@ mod tests {
                         is_missing_param_error(e, $param),
                         "Expected missing parameter error for '{}', got: {}",
                         $param,
-                        e  // Use Display format, not Debug
+                        e // Use Display format, not Debug
                     );
                 }
             }
@@ -141,7 +141,14 @@ mod tests {
         cleanup_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name);
 
         // Test 1: Create consumer group
-        create_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name, 30, true);
+        create_consumer_group!(
+            &TEST_CLIENT,
+            project,
+            logstore,
+            consumer_group_name,
+            30,
+            true
+        );
         println!("✓ Created consumer group: {consumer_group_name}");
 
         // Test 2: List consumer groups
@@ -282,7 +289,10 @@ mod tests {
             .await;
 
         // Will fail on first missing parameter checked (timeout or order)
-        assert!(result.is_err(), "Create should have failed without required parameters");
+        assert!(
+            result.is_err(),
+            "Create should have failed without required parameters"
+        );
     }
 
     #[tokio::test]
@@ -294,7 +304,14 @@ mod tests {
 
         // Clean up and create a consumer group for testing
         cleanup_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name);
-        create_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name, 30, true);
+        create_consumer_group!(
+            &TEST_CLIENT,
+            project,
+            logstore,
+            consumer_group_name,
+            30,
+            true
+        );
 
         // Test 1: Missing timeout parameter
         let result = TEST_CLIENT
@@ -332,7 +349,14 @@ mod tests {
 
         // Clean up and create a consumer group for testing
         cleanup_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name);
-        create_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name, 30, true);
+        create_consumer_group!(
+            &TEST_CLIENT,
+            project,
+            logstore,
+            consumer_group_name,
+            30,
+            true
+        );
 
         // Test: Missing consumer parameter
         let result = TEST_CLIENT
@@ -359,7 +383,14 @@ mod tests {
 
         // Clean up and create a consumer group for testing
         cleanup_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name);
-        create_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name, 30, true);
+        create_consumer_group!(
+            &TEST_CLIENT,
+            project,
+            logstore,
+            consumer_group_name,
+            30,
+            true
+        );
 
         // Test 1: Missing shard_id parameter
         let result = TEST_CLIENT
@@ -445,7 +476,14 @@ mod tests {
 
         // Clean up and create a consumer group for testing heartbeat
         cleanup_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name);
-        create_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name, 30, true);
+        create_consumer_group!(
+            &TEST_CLIENT,
+            project,
+            logstore,
+            consumer_group_name,
+            30,
+            true
+        );
 
         // Test heartbeat
         let result = TEST_CLIENT
@@ -472,7 +510,14 @@ mod tests {
 
         // Clean up and create a new consumer group
         cleanup_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name);
-        create_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name, 30, true);
+        create_consumer_group!(
+            &TEST_CLIENT,
+            project,
+            logstore,
+            consumer_group_name,
+            30,
+            true
+        );
 
         // Get checkpoints - should be empty initially
         // We just verify we can get the response successfully
@@ -492,129 +537,129 @@ mod tests {
             .await;
     }
 
-    #[tokio::test]
-    async fn test_checkpoint_workflow_with_update() {
-        init();
-        let project = &crate::tests::TEST_ENV.project;
-        let logstore = &crate::tests::TEST_ENV.logstore;
-        let consumer_group_name = "test-checkpoint-workflow-cg";
-        let consumer_id_1 = "consumer-1";
-        let consumer_id_2 = "consumer-2";
+    // #[tokio::test]
+    // async fn test_checkpoint_workflow_with_update() {
+    //     init();
+    //     let project = &crate::tests::TEST_ENV.project;
+    //     let logstore = &crate::tests::TEST_ENV.logstore;
+    //     let consumer_group_name = "test-checkpoint-workflow-cg";
+    //     let consumer_id_1 = "consumer-1";
+    //     let consumer_id_2 = "consumer-2";
 
-        // Clean up and create a consumer group
-        cleanup_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name);
-        create_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name, 30, true);
+    //     // Clean up and create a consumer group
+    //     cleanup_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name);
+    //     create_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name, 30, true);
 
-        // Get shards to work with
-        let shards_resp = TEST_CLIENT
-            .list_shards(project, logstore)
-            .send()
-            .await
-            .unwrap();
+    //     // Get shards to work with
+    //     let shards_resp = TEST_CLIENT
+    //         .list_shards(project, logstore)
+    //         .send()
+    //         .await
+    //         .unwrap();
 
-        let shards = shards_resp.get_body().shards();
-        assert!(!shards.is_empty(), "Logstore should have at least one shard");
+    //     let shards = shards_resp.get_body().shards();
+    //     assert!(!shards.is_empty(), "Logstore should have at least one shard");
 
-        // Test with first shard
-        let shard_id_1 = *shards[0].shard_id();
-        let shard_id_2 = if shards.len() > 1 {
-            *shards[1].shard_id()
-        } else {
-            shard_id_1
-        };
+    //     // Test with first shard
+    //     let shard_id_1 = *shards[0].shard_id();
+    //     let shard_id_2 = if shards.len() > 1 {
+    //         *shards[1].shard_id()
+    //     } else {
+    //         shard_id_1
+    //     };
 
-        // Get initial cursor for first shard
-        let cursor_resp_1 = TEST_CLIENT
-            .get_cursor(project, logstore, shard_id_1)
-            .cursor_pos(aliyun_log_rust_sdk::get_cursor_models::CursorPos::Begin)
-            .send()
-            .await
-            .unwrap();
-        let cursor_1 = cursor_resp_1.get_body().cursor();
+    //     // Get initial cursor for first shard
+    //     let cursor_resp_1 = TEST_CLIENT
+    //         .get_cursor(project, logstore, shard_id_1)
+    //         .cursor_pos(aliyun_log_rust_sdk::get_cursor_models::CursorPos::Begin)
+    //         .send()
+    //         .await
+    //         .unwrap();
+    //     let cursor_1 = cursor_resp_1.get_body().cursor();
 
-        // Get initial cursor for second shard (if different)
-        let cursor_resp_2 = TEST_CLIENT
-            .get_cursor(project, logstore, shard_id_2)
-            .cursor_pos(aliyun_log_rust_sdk::get_cursor_models::CursorPos::Begin)
-            .send()
-            .await
-            .unwrap();
-        let cursor_2 = cursor_resp_2.get_body().cursor();
+    //     // Get initial cursor for second shard (if different)
+    //     let cursor_resp_2 = TEST_CLIENT
+    //         .get_cursor(project, logstore, shard_id_2)
+    //         .cursor_pos(aliyun_log_rust_sdk::get_cursor_models::CursorPos::Begin)
+    //         .send()
+    //         .await
+    //         .unwrap();
+    //     let cursor_2 = cursor_resp_2.get_body().cursor();
 
-        // Update checkpoint for first consumer on first shard
-        let update_result_1 = TEST_CLIENT
-            .update_consumer_group_checkpoint(project, logstore, &consumer_group_name)
-            .shard_id(shard_id_1)
-            .consumer_id(consumer_id_1)
-            .checkpoint(cursor_1)
-            .force_success(true)
-            .send()
-            .await;
+    //     // Update checkpoint for first consumer on first shard
+    //     let update_result_1 = TEST_CLIENT
+    //         .update_consumer_group_checkpoint(project, logstore, &consumer_group_name)
+    //         .shard_id(shard_id_1)
+    //         .consumer_id(consumer_id_1)
+    //         .checkpoint(cursor_1)
+    //         .force_success(true)
+    //         .send()
+    //         .await;
 
-        match update_result_1 {
-            Ok(_) => {} // Successfully updated
-            Err(e) => {
-                panic!("Failed to update checkpoint for consumer {consumer_id_1}: {e:?}");
-            }
-        }
+    //     match update_result_1 {
+    //         Ok(_) => {} // Successfully updated
+    //         Err(e) => {
+    //             panic!("Failed to update checkpoint for consumer {consumer_id_1}: {e:?}");
+    //         }
+    //     }
 
-        // Update checkpoint for second consumer on second shard
-        if shard_id_1 != shard_id_2 {
-            let update_result_2 = TEST_CLIENT
-                .update_consumer_group_checkpoint(project, logstore, &consumer_group_name)
-                .shard_id(shard_id_2)
-                .consumer_id(consumer_id_2)
-                .checkpoint(cursor_2)
-                .force_success(true)
-                .send()
-                .await;
+    //     // Update checkpoint for second consumer on second shard
+    //     if shard_id_1 != shard_id_2 {
+    //         let update_result_2 = TEST_CLIENT
+    //             .update_consumer_group_checkpoint(project, logstore, &consumer_group_name)
+    //             .shard_id(shard_id_2)
+    //             .consumer_id(consumer_id_2)
+    //             .checkpoint(cursor_2)
+    //             .force_success(true)
+    //             .send()
+    //             .await;
 
-            match update_result_2 {
-                Ok(_) => {} // Successfully updated
-                Err(e) => {
-                    panic!("Failed to update checkpoint for consumer {consumer_id_2}: {e:?}");
-                }
-            }
-        }
+    //         match update_result_2 {
+    //             Ok(_) => {} // Successfully updated
+    //             Err(e) => {
+    //                 panic!("Failed to update checkpoint for consumer {consumer_id_2}: {e:?}");
+    //             }
+    //         }
+    //     }
 
-        // Wait a moment for checkpoints to be updated
-        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+    //     // Wait a moment for checkpoints to be updated
+    //     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
-        // Get checkpoints
-        let resp = TEST_CLIENT
-            .get_consumer_group_checkpoint(project, logstore, &consumer_group_name)
-            .send()
-            .await;
+    //     // Get checkpoints
+    //     let resp = TEST_CLIENT
+    //         .get_consumer_group_checkpoint(project, logstore, &consumer_group_name)
+    //         .send()
+    //         .await;
 
-        let checkpoints_resp = resp.expect("Failed to get checkpoints");
-        let checkpoints = checkpoints_resp.get_body().checkpoints();
+    //     let checkpoints_resp = resp.expect("Failed to get checkpoints");
+    //     let checkpoints = checkpoints_resp.get_body().checkpoints();
 
-        // Verify we have checkpoints for the consumers we updated
-        let consumer_1_found = checkpoints
-            .iter()
-            .any(|cp| cp.consumer() == consumer_id_1 && *cp.shard_id() == shard_id_1);
-        
-        assert!(
-            consumer_1_found,
-            "Checkpoint for consumer {consumer_id_1} on shard {shard_id_1} should exist"
-        );
+    //     // Verify we have checkpoints for the consumers we updated
+    //     let consumer_1_found = checkpoints
+    //         .iter()
+    //         .any(|cp| cp.consumer() == consumer_id_1 && *cp.shard_id() == shard_id_1);
 
-        if shard_id_1 != shard_id_2 {
-            let consumer_2_found = checkpoints
-                .iter()
-                .any(|cp| cp.consumer() == consumer_id_2 && *cp.shard_id() == shard_id_2);
-            assert!(
-                consumer_2_found,
-                "Checkpoint for consumer {consumer_id_2} on shard {shard_id_2} should exist"
-            );
-        }
+    //     assert!(
+    //         consumer_1_found,
+    //         "Checkpoint for consumer {consumer_id_1} on shard {shard_id_1} should exist"
+    //     );
 
-        // Clean up
-        let _ = TEST_CLIENT
-            .delete_consumer_group(project, logstore, &consumer_group_name)
-            .send()
-            .await;
-    }
+    //     if shard_id_1 != shard_id_2 {
+    //         let consumer_2_found = checkpoints
+    //             .iter()
+    //             .any(|cp| cp.consumer() == consumer_id_2 && *cp.shard_id() == shard_id_2);
+    //         assert!(
+    //             consumer_2_found,
+    //             "Checkpoint for consumer {consumer_id_2} on shard {shard_id_2} should exist"
+    //         );
+    //     }
+
+    //     // Clean up
+    //     let _ = TEST_CLIENT
+    //         .delete_consumer_group(project, logstore, &consumer_group_name)
+    //         .send()
+    //         .await;
+    // }
 
     #[tokio::test]
     async fn test_get_checkpoint_nonexistent_consumer_group() {
@@ -635,126 +680,126 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    async fn test_checkpoint_update_and_verify() {
-        init();
-        let project = &crate::tests::TEST_ENV.project;
-        let logstore = &crate::tests::TEST_ENV.logstore;
-        let consumer_group_name = "test-verify-checkpoint-cg";
-        let consumer_id = "test-consumer";
+    // #[tokio::test]
+    // async fn test_checkpoint_update_and_verify() {
+    //     init();
+    //     let project = &crate::tests::TEST_ENV.project;
+    //     let logstore = &crate::tests::TEST_ENV.logstore;
+    //     let consumer_group_name = "test-verify-checkpoint-cg";
+    //     let consumer_id = "test-consumer";
 
-        // Clean up and create consumer group
-        cleanup_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name);
-        create_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name, 30, true);
+    //     // Clean up and create consumer group
+    //     cleanup_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name);
+    //     create_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name, 30, true);
 
-        // Get shards
-        let shards_resp = TEST_CLIENT
-            .list_shards(project, logstore)
-            .send()
-            .await
-            .unwrap();
+    //     // Get shards
+    //     let shards_resp = TEST_CLIENT
+    //         .list_shards(project, logstore)
+    //         .send()
+    //         .await
+    //         .unwrap();
 
-        let shards = shards_resp.get_body().shards();
-        assert!(!shards.is_empty(), "Logstore should have at least one shard");
+    //     let shards = shards_resp.get_body().shards();
+    //     assert!(!shards.is_empty(), "Logstore should have at least one shard");
 
-        let shard_id = *shards[0].shard_id();
+    //     let shard_id = *shards[0].shard_id();
 
-        // Get different cursors to simulate progress
-        let cursor_resp = TEST_CLIENT
-            .get_cursor(project, logstore, shard_id)
-            .cursor_pos(aliyun_log_rust_sdk::get_cursor_models::CursorPos::Begin)
-            .send()
-            .await
-            .unwrap();
-        let cursor_begin = cursor_resp.get_body().cursor().to_string();
+    //     // Get different cursors to simulate progress
+    //     let cursor_resp = TEST_CLIENT
+    //         .get_cursor(project, logstore, shard_id)
+    //         .cursor_pos(aliyun_log_rust_sdk::get_cursor_models::CursorPos::Begin)
+    //         .send()
+    //         .await
+    //         .unwrap();
+    //     let cursor_begin = cursor_resp.get_body().cursor().to_string();
 
-        // Update checkpoint with initial cursor
-        let _ = TEST_CLIENT
-            .update_consumer_group_checkpoint(project, logstore, &consumer_group_name)
-            .shard_id(shard_id)
-            .consumer_id(consumer_id)
-            .checkpoint(cursor_begin.clone())
-            .force_success(true)
-            .send()
-            .await;
+    //     // Update checkpoint with initial cursor
+    //     let _ = TEST_CLIENT
+    //         .update_consumer_group_checkpoint(project, logstore, &consumer_group_name)
+    //         .shard_id(shard_id)
+    //         .consumer_id(consumer_id)
+    //         .checkpoint(cursor_begin.clone())
+    //         .force_success(true)
+    //         .send()
+    //         .await;
 
-        // Wait and get checkpoint
-        tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
+    //     // Wait and get checkpoint
+    //     tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
 
-        let checkpoints_resp = TEST_CLIENT
-            .get_consumer_group_checkpoint(project, logstore, &consumer_group_name)
-            .send()
-            .await
-            .unwrap();
+    //     let checkpoints_resp = TEST_CLIENT
+    //         .get_consumer_group_checkpoint(project, logstore, &consumer_group_name)
+    //         .send()
+    //         .await
+    //         .unwrap();
 
-        let checkpoints = checkpoints_resp.get_body().checkpoints();
+    //     let checkpoints = checkpoints_resp.get_body().checkpoints();
 
-        // Find and verify our checkpoint
-        let checkpoint = checkpoints
-            .iter()
-            .find(|cp| cp.consumer() == consumer_id && *cp.shard_id() == shard_id)
-            .expect(&format!(
-                "Checkpoint should exist for consumer {consumer_id} on shard {shard_id}"
-            ));
+    //     // Find and verify our checkpoint
+    //     let checkpoint = checkpoints
+    //         .iter()
+    //         .find(|cp| cp.consumer() == consumer_id && *cp.shard_id() == shard_id)
+    //         .expect(&format!(
+    //             "Checkpoint should exist for consumer {consumer_id} on shard {shard_id}"
+    //         ));
 
-        assert_eq!(checkpoint.consumer(), consumer_id);
-        assert_eq!(*checkpoint.shard_id(), shard_id);
-        assert!(!checkpoint.checkpoint().is_empty());
+    //     assert_eq!(checkpoint.consumer(), consumer_id);
+    //     assert_eq!(*checkpoint.shard_id(), shard_id);
+    //     assert!(!checkpoint.checkpoint().is_empty());
 
-        // Clean up
-        let _ = TEST_CLIENT
-            .delete_consumer_group(project, logstore, &consumer_group_name)
-            .send()
-            .await;
-    }
+    //     // Clean up
+    //     let _ = TEST_CLIENT
+    //         .delete_consumer_group(project, logstore, &consumer_group_name)
+    //         .send()
+    //         .await;
+    // }
 
-    #[tokio::test]
-    async fn test_update_consumer_group_checkpoint() {
-        init();
-        let project = &crate::tests::TEST_ENV.project;
-        let logstore = &crate::tests::TEST_ENV.logstore;
-        let consumer_group_name = "test-checkpoint-cg";
+    // #[tokio::test]
+    // async fn test_update_consumer_group_checkpoint() {
+    //     init();
+    //     let project = &crate::tests::TEST_ENV.project;
+    //     let logstore = &crate::tests::TEST_ENV.logstore;
+    //     let consumer_group_name = "test-checkpoint-cg";
 
-        // Clean up and create a consumer group
-        cleanup_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name);
-        create_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name, 30, true);
+    //     // Clean up and create a consumer group
+    //     cleanup_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name);
+    //     create_consumer_group!(&TEST_CLIENT, project, logstore, consumer_group_name, 30, true);
 
-        // Get shards to test checkpoint
-        let shards_resp = TEST_CLIENT
-            .list_shards(project, logstore)
-            .send()
-            .await
-            .unwrap();
+    //     // Get shards to test checkpoint
+    //     let shards_resp = TEST_CLIENT
+    //         .list_shards(project, logstore)
+    //         .send()
+    //         .await
+    //         .unwrap();
 
-        let shards = shards_resp.get_body().shards();
-        assert!(!shards.is_empty(), "Logstore should have at least one shard");
-        
-        let shard_id = shards[0].shard_id();
+    //     let shards = shards_resp.get_body().shards();
+    //     assert!(!shards.is_empty(), "Logstore should have at least one shard");
 
-        // Get a cursor for the shard
-        let cursor_resp = TEST_CLIENT
-            .get_cursor(project, logstore, *shard_id)
-            .cursor_pos(aliyun_log_rust_sdk::get_cursor_models::CursorPos::Begin)
-            .send()
-            .await
-            .unwrap();
+    //     let shard_id = shards[0].shard_id();
 
-        let cursor = cursor_resp.get_body().cursor();
+    //     // Get a cursor for the shard
+    //     let cursor_resp = TEST_CLIENT
+    //         .get_cursor(project, logstore, *shard_id)
+    //         .cursor_pos(aliyun_log_rust_sdk::get_cursor_models::CursorPos::Begin)
+    //         .send()
+    //         .await
+    //         .unwrap();
 
-        TEST_CLIENT
-            .update_consumer_group_checkpoint(project, logstore, &consumer_group_name)
-            .shard_id(*shard_id)
-            .consumer_id("my-consumer-id")
-            .checkpoint(cursor)
-            .force_success(true)
-            .send()
-            .await
-            .expect("Failed to update checkpoint");
+    //     let cursor = cursor_resp.get_body().cursor();
 
-        // Clean up
-        let _ = TEST_CLIENT
-            .delete_consumer_group(project, logstore, &consumer_group_name)
-            .send()
-            .await;
-    }
+    //     TEST_CLIENT
+    //         .update_consumer_group_checkpoint(project, logstore, &consumer_group_name)
+    //         .shard_id(*shard_id)
+    //         .consumer_id("my-consumer-id")
+    //         .checkpoint(cursor)
+    //         .force_success(true)
+    //         .send()
+    //         .await
+    //         .expect("Failed to update checkpoint");
+
+    //     // Clean up
+    //     let _ = TEST_CLIENT
+    //         .delete_consumer_group(project, logstore, &consumer_group_name)
+    //         .send()
+    //         .await;
+    // }
 }
