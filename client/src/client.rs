@@ -164,7 +164,12 @@ impl Handle {
         mut headers: http::HeaderMap,
     ) -> Result<DecompressedResponse> {
         if !headers.contains_key(USER_AGENT) {
-            headers.insert(USER_AGENT, user_agent().parse().expect("fail to insert UserAgent into headers"));
+            headers.insert(
+                USER_AGENT,
+                user_agent()
+                    .parse()
+                    .expect("fail to insert UserAgent into headers"),
+            );
         }
 
         // prepare http request parameters
@@ -211,7 +216,9 @@ impl Handle {
             );
             sleep(backoff).await;
         }
-        return Err(Error::Other(anyhow::anyhow!("unreachable, this is a bug, please open an issue to report it.")));
+        Err(Error::Other(anyhow::anyhow!(
+            "unreachable, this is a bug, please open an issue to report it."
+        )))
     }
 
     async fn send_signed_http(
@@ -313,11 +320,17 @@ impl Handle {
         let body_raw_size = body.len();
         headers.insert(
             LOG_BODY_RAW_SIZE,
-            body_raw_size.to_string().parse().expect("fail to insert bodyRawSize into header"),
+            body_raw_size
+                .to_string()
+                .parse()
+                .expect("fail to insert bodyRawSize into header"),
         );
         headers.insert(
             LOG_COMPRESS_TYPE,
-            compress_type.to_string().parse().expect("fail to insert compressType into header"),
+            compress_type
+                .to_string()
+                .parse()
+                .expect("fail to insert compressType into header"),
         );
 
         compress(body, compress_type)

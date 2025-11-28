@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 impl crate::client::Client {
     /// List all consumer groups of a logstore.
     ///
-    /// This method retrieves information about all consumer groups in the specified logstore.
+    /// This method retrieves information about all consumer groups in the specified logstore,
+    /// including their timeout and ordering settings.
     ///
     /// # Arguments
     ///
@@ -15,15 +16,18 @@ impl crate::client::Client {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
-    /// ```
+    /// ```no_run
     /// # async fn example(client: aliyun_log_rust_sdk::Client) -> Result<(), aliyun_log_rust_sdk::Error> {
-    /// let resp = client.list_consumer_groups("my-project", "my-logstore").send().await?;
-    /// println!("Found {} consumer groups", resp.get_body().consumer_groups().len());
+    /// let resp = client.list_consumer_groups("my-project", "my-logstore")
+    ///     .send()
+    ///     .await?;
     ///
     /// for cg in resp.get_body().consumer_groups() {
-    ///     println!("Consumer Group: {}, Timeout: {}", cg.consumer_group_name(), cg.timeout());
+    ///     println!("Group: {}, Timeout: {}s, Ordered: {}",
+    ///         cg.consumer_group_name(),
+    ///         cg.timeout(),
+    ///         cg.order()
+    ///     );
     /// }
     /// # Ok(())
     /// # }

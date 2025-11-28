@@ -6,9 +6,9 @@ use serde::{Deserialize, Serialize};
 impl crate::client::Client {
     /// Get consumer group checkpoints.
     ///
-    /// This method retrieves all consumption checkpoints for a consumer group.
-    /// Checkpoints track the consumption progress and are used to resume consumption from
-    /// the correct position after a restart.
+    /// This method retrieves consumption checkpoints for a consumer group.
+    /// Checkpoints track the consumption progress for each shard and are used to
+    /// resume consumption from the correct position after a restart.
     ///
     /// # Arguments
     ///
@@ -18,23 +18,29 @@ impl crate::client::Client {
     ///
     /// # Examples
     ///
-    /// Getting checkpoints:
+    /// Get all checkpoints:
     ///
-    /// ```
+    /// ```no_run
     /// # async fn example(client: aliyun_log_rust_sdk::Client) -> Result<(), aliyun_log_rust_sdk::Error> {
-    /// let resp = client
-    ///     .get_consumer_group_checkpoint("my-project", "my-logstore", "my-consumer-group")
+    /// let resp = client.get_consumer_group_checkpoint("my-project", "my-logstore", "my-consumer-group")
     ///     .send()
     ///     .await?;
     ///
-    /// for checkpoint in resp.get_body().checkpoints() {
-    ///     println!("Shard: {}, Checkpoint: {}, Consumer: {}, UpdateTime: {}",
-    ///         checkpoint.shard_id(),
-    ///         checkpoint.checkpoint(),
-    ///         checkpoint.consumer(),
-    ///         checkpoint.update_time()
-    ///     );
+    /// for cp in resp.get_body().checkpoints() {
+    ///     println!("Shard {}: {}", cp.shard_id(), cp.checkpoint());
     /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// Get checkpoint for a specific shard:
+    ///
+    /// ```no_run
+    /// # async fn example(client: aliyun_log_rust_sdk::Client) -> Result<(), aliyun_log_rust_sdk::Error> {
+    /// let resp = client.get_consumer_group_checkpoint("my-project", "my-logstore", "my-consumer-group")
+    ///     .shard_id(0)  // Get checkpoint for shard 0 only
+    ///     .send()
+    ///     .await?;
     /// # Ok(())
     /// # }
     /// ```
@@ -75,8 +81,12 @@ impl GetConsumerGroupCheckpointRequestBuilder {
 
     /// Set the shard ID to get the checkpoint for (optional).
     ///
-    /// If specified, only the checkpoint for this shard will be returned.
-    /// If not specified, checkpoints for all shards will be returned.
+    /// * If specified: Only the checkpoint for this shard will be returned
+    /// * If not specified: Checkpoints for all shards will be returned
+    ///
+    /// # Arguments
+    ///
+    /// * `shard_id` - The ID of the shard to query
     pub fn shard_id(mut self, shard_id: i32) -> Self {
         self.shard_id = Some(shard_id);
         self

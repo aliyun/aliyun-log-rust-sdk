@@ -4,7 +4,7 @@ impl crate::client::Client {
     /// Delete a consumer group.
     ///
     /// This method deletes an existing consumer group from the logstore.
-    /// All associated checkpoints will also be removed.
+    /// All associated checkpoints and consumer states will also be removed.
     ///
     /// # Arguments
     ///
@@ -14,12 +14,9 @@ impl crate::client::Client {
     ///
     /// # Examples
     ///
-    /// Deleting a consumer group:
-    ///
-    /// ```
+    /// ```no_run
     /// # async fn example(client: aliyun_log_rust_sdk::Client) -> Result<(), aliyun_log_rust_sdk::Error> {
-    /// let resp = client
-    ///     .delete_consumer_group("my-project", "my-logstore", "my-consumer-group")
+    /// client.delete_consumer_group("my-project", "my-logstore", "my-consumer-group")
     ///     .send()
     ///     .await?;
     /// # Ok(())

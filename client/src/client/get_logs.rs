@@ -143,7 +143,10 @@ impl Request for GetLogsRequest {
         let mut headers = http::HeaderMap::new();
         headers.insert(
             ACCEPT_ENCODING,
-            CompressType::Lz4.to_string().parse().expect("fail to insert CompressType into headers"),
+            CompressType::Lz4
+                .to_string()
+                .parse()
+                .expect("fail to insert CompressType into headers"),
         );
         headers
     }

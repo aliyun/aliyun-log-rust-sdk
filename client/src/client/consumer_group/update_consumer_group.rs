@@ -16,14 +16,11 @@ impl crate::client::Client {
     ///
     /// # Examples
     ///
-    /// Updating a consumer group:
-    ///
-    /// ```
+    /// ```no_run
     /// # async fn example(client: aliyun_log_rust_sdk::Client) -> Result<(), aliyun_log_rust_sdk::Error> {
-    /// let resp = client
-    ///     .update_consumer_group("my-project", "my-logstore", "my-consumer-group")
-    ///     .timeout(60) // Required, the heartbeat timeout in seconds
-    ///     .order(false) // Required, whether to consume in order
+    /// client.update_consumer_group("my-project", "my-logstore", "my-consumer-group")
+    ///     .timeout(60)   // Heartbeat timeout in seconds (required)
+    ///     .order(false)  // Whether consuming logs in order (required)
     ///     .send()
     ///     .await?;
     /// # Ok(())
@@ -69,7 +66,11 @@ impl UpdateConsumerGroupRequestBuilder {
     /// Set the heartbeat timeout in seconds (required).
     ///
     /// Consumers must send heartbeats within this timeout period to maintain ownership of shards.
-    /// If a consumer fails to send heartbeats within this period, its shards may be reassigned.
+    /// If a consumer fails to send heartbeats, its shards will be reassigned to other consumers.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - Timeout in seconds (typically 30-300)
     pub fn timeout(mut self, timeout: i32) -> Self {
         self.timeout = Some(timeout);
         self
@@ -77,8 +78,12 @@ impl UpdateConsumerGroupRequestBuilder {
 
     /// Set whether to consume logs in order (required).
     ///
-    /// When set to `true`, new shards will not be assigned until the shard they are split from is consumed completely.
-    /// When set to `false`, the shards will be assigned instantly after creation.
+    /// * When `true`: New shards will not be assigned until their parent shards are fully consumed.
+    /// * When `false`: The newly created shards can be assigned for consumption instantly.
+    ///
+    /// # Arguments
+    ///
+    /// * `order` - Enable ordered consumption
     pub fn order(mut self, order: bool) -> Self {
         self.order = Some(order);
         self

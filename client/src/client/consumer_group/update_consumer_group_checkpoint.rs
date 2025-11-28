@@ -6,8 +6,8 @@ impl crate::client::Client {
     /// Update consumer group checkpoint.
     ///
     /// This method updates the consumption checkpoint for a specific shard in a consumer group.
-    /// Checkpoints track the consumption progress and are used to resume consumption from
-    /// the correct position after a restart.
+    /// The checkpoint marks the position up to which logs have been successfully consumed,
+    /// and is used to resume consumption from the correct position after a restart.
     ///
     /// # Arguments
     ///
@@ -17,16 +17,33 @@ impl crate::client::Client {
     ///
     /// # Examples
     ///
-    /// Updating a checkpoint:
+    /// Normal checkpoint update:
     ///
-    /// ```
+    /// ```no_run
     /// # async fn example(client: aliyun_log_rust_sdk::Client) -> Result<(), aliyun_log_rust_sdk::Error> {
-    /// let resp = client
-    ///     .update_consumer_group_checkpoint("my-project", "my-logstore", "my-consumer-group")
+    /// // Get cursor from get_cursor or pull_logs response
+    /// let cursor = "MTU0NzQ3MDY4MjM3NjUxMzU0Ng==";
+    ///
+    /// // Send hearbeat to server first to get ownership of a shard
+    /// client.update_consumer_group_checkpoint("my-project", "my-logstore", "my-consumer-group")
+    ///     .shard_id(0)                    // Shard to update (required)
+    ///     .consumer_id("consumer-1")      // Consumer identifier (required)
+    ///     .checkpoint(cursor)             // Cursor value (required)
+    ///     .send()
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// Force update (bypass ownership check):
+    ///
+    /// ```no_run
+    /// # async fn example(client: aliyun_log_rust_sdk::Client, cursor: &str) -> Result<(), aliyun_log_rust_sdk::Error> {
+    /// client.update_consumer_group_checkpoint("my-project", "my-logstore", "my-consumer-group")
     ///     .shard_id(0)
-    ///     .consumer_id("my-consumer-id")
-    ///     .checkpoint("cursor-value-here")
-    ///     .force_success(true)
+    ///     .consumer_id("consumer-1")
+    ///     .checkpoint(cursor)
+    ///     .force_success(true)            // Force update even if not owner
     ///     .send()
     ///     .await?;
     /// # Ok(())
@@ -76,28 +93,12 @@ impl UpdateCheckpointRequestBuilder {
     /// Set the shard ID for which to update the checkpoint (required).
     ///
     /// Each shard has its own checkpoint to track consumption progress independently.
+    ///
+    /// # Arguments
+    ///
+    /// * `shard_id` - The ID of the shard to update
     pub fn shard_id(mut self, shard_id: i32) -> Self {
         self.shard_id = Some(shard_id);
-        self
-    }
-
-    /// Set the checkpoint value (required).
-    ///
-    /// This should be a valid cursor value obtained from `get_cursor` or `pull_logs`.
-    /// The checkpoint marks the position up to which logs have been successfully consumed.
-    /// The checkpoint is the next position to consume.
-    pub fn checkpoint(mut self, checkpoint: impl AsRef<str>) -> Self {
-        self.checkpoint = Some(checkpoint.as_ref().to_string());
-        self
-    }
-
-    /// Set whether to force the checkpoint update to succeed (optional, defaults to `false`).
-    ///
-    /// When set to `true`, the checkpoint will be updated even if the consumer doesn't
-    /// currently own the shard. Use with caution as this can lead to duplicate processing
-    /// if multiple consumers update the same checkpoint.
-    pub fn force_success(mut self, force_success: bool) -> Self {
-        self.force_success = Some(force_success);
         self
     }
 
@@ -105,8 +106,38 @@ impl UpdateCheckpointRequestBuilder {
     ///
     /// This identifies which consumer is updating the checkpoint.
     /// Only the consumer that owns a shard should normally update its checkpoint.
+    ///
+    /// # Arguments
+    ///
+    /// * `consumer_id` - Unique consumer identifier
     pub fn consumer_id(mut self, consumer_id: impl AsRef<str>) -> Self {
         self.consumer_id = Some(consumer_id.as_ref().to_string());
+        self
+    }
+
+    /// Set the checkpoint value (required).
+    ///
+    /// This should be a valid cursor value obtained from `get_cursor` or `pull_logs`.
+    /// The checkpoint represents the next position to consume from.
+    ///
+    /// # Arguments
+    ///
+    /// * `checkpoint` - Cursor value marking the consumption position
+    pub fn checkpoint(mut self, checkpoint: impl AsRef<str>) -> Self {
+        self.checkpoint = Some(checkpoint.as_ref().to_string());
+        self
+    }
+
+    /// Set whether to force the checkpoint update (optional, defaults to `false`).
+    ///
+    /// * When `false`: Update only if this consumer owns the shard (recommended)
+    /// * When `true`: Update regardless of ownership (may cause duplicate processing)
+    ///
+    /// # Arguments
+    ///
+    /// * `force_success` - Whether to bypass ownership check
+    pub fn force_success(mut self, force_success: bool) -> Self {
+        self.force_success = Some(force_success);
         self
     }
 
