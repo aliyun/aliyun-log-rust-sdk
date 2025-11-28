@@ -23,8 +23,8 @@ impl crate::client::Client {
     ///     .send()
     ///     .await?;
     ///
-    /// println!("Total projects: {}", resp.body().total());
-    /// for project in resp.body().projects() {
+    /// println!("Total projects: {}", resp.get_body().total());
+    /// for project in resp.get_body().projects() {
     ///     println!("Project: {}", project.project_name());
     /// }
     ///

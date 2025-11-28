@@ -19,7 +19,7 @@ impl crate::client::Client {
     /// let response = client.get_project("test-project")
     ///     .send()
     ///     .await?;
-    /// println!("Project description: {}", response.body().description());
+    /// println!("Project description: {}", response.get_body().description());
     /// # Ok(())
     /// # }
     /// ```
