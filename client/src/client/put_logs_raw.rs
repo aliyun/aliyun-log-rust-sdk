@@ -106,7 +106,7 @@ impl Request for PutLogsRawRequest {
         let mut headers = http::HeaderMap::new();
         headers.insert(
             LOG_BODY_RAW_SIZE,
-            self.raw_size.to_string().parse().unwrap(),
+            self.raw_size.to_string().parse().expect("fail to insert BodyRawSize into headers"),
         );
         headers.insert(
             LOG_COMPRESS_TYPE,

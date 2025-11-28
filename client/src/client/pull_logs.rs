@@ -261,7 +261,7 @@ impl Request for PullLogsRequest {
         headers.insert(ACCEPT, LOG_PROTOBUF);
         headers.insert(
             ACCEPT_ENCODING,
-            CompressType::Lz4.to_string().parse().unwrap(),
+            CompressType::Lz4.to_string().parse().expect("fail to insert CompressType into headers"),
         );
         headers
     }
