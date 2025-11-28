@@ -4,14 +4,21 @@
 
 ### Added
 
+- **Project Management APIs**: Complete support for project management
+  - `create_project` - Create a new project with configuration options
+  - `update_project` - Update project description and settings
+  - `delete_project` - Delete an existing project
+  - `get_project` - Get detailed project information
+  - `list_projects` - List projects with pagination and filtering support
+
 - **Consumer Group APIs**: Complete support for consumer group management
-  - `create_consumer_group`
-  - `update_consumer_group`
-  - `delete_consumer_group`
-  - `list_consumer_groups`
-  - `consumer_group_heartbeat`
-  - `get_consumer_group_checkpoint`
-  - `update_consumer_group_checkpoint`
+  - `create_consumer_group` - Create a consumer group for coordinated log consumption
+  - `update_consumer_group` - Update consumer group configuration
+  - `delete_consumer_group` - Delete a consumer group
+  - `list_consumer_groups` - List all consumer groups in a logstore
+  - `consumer_group_heartbeat` - Send heartbeat to maintain shard ownership
+  - `get_consumer_group_checkpoint` - Get consumption checkpoints
+  - `update_consumer_group_checkpoint` - Update consumption progress
 
 ### Changed
 
