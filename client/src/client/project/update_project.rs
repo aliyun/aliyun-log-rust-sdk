@@ -111,4 +111,3 @@ impl Request for UpdateProjectRequest {
         Ok(Some(bytes::Bytes::from(json)))
     }
 }
-

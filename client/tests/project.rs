@@ -125,11 +125,7 @@ mod tests {
         println!("✓ Created project: {}", project_name);
 
         // Test 2: Get project
-        let get_resp = TEST_CLIENT
-            .get_project(&project_name)
-            .send()
-            .await
-            .unwrap();
+        let get_resp = TEST_CLIENT.get_project(&project_name).send().await.unwrap();
 
         let project_info = get_resp.get_body();
         assert_eq!(project_info.project_name(), &project_name);
@@ -146,9 +142,7 @@ mod tests {
             .unwrap();
 
         let projects = list_resp.get_body().projects();
-        let found_project = projects
-            .iter()
-            .find(|p| p.project_name() == &project_name);
+        let found_project = projects.iter().find(|p| p.project_name() == &project_name);
 
         assert!(
             found_project.is_some(),
@@ -167,11 +161,7 @@ mod tests {
         println!("✓ Updated project: {}", project_name);
 
         // Verify update
-        let get_resp = TEST_CLIENT
-            .get_project(&project_name)
-            .send()
-            .await
-            .unwrap();
+        let get_resp = TEST_CLIENT.get_project(&project_name).send().await.unwrap();
 
         let project_info = get_resp.get_body();
         assert_eq!(
@@ -210,21 +200,18 @@ mod tests {
         let non_existent_project = format!("{}-non-exist", get_test_project_name());
 
         // Test 1: Get non-existent project
-        let result = TEST_CLIENT
-            .get_project(&non_existent_project)
-            .send()
-            .await;
+        let result = TEST_CLIENT.get_project(&non_existent_project).send().await;
 
-        assert!(
-            result.is_err(),
-            "Should fail to get non-existent project"
-        );
-        
+        assert!(result.is_err(), "Should fail to get non-existent project");
+
         // Verify it's a ProjectNotExist error
         if let Err(e) = result {
             match &e {
                 aliyun_log_rust_sdk::Error::Server { error_code, .. } => {
-                    assert_eq!(error_code, "ProjectNotExist", "Should return ProjectNotExist error");
+                    assert_eq!(
+                        error_code, "ProjectNotExist",
+                        "Should return ProjectNotExist error"
+                    );
                 }
                 _ => panic!("Expected Server error with ProjectNotExist, got: {}", e),
             }
@@ -242,11 +229,14 @@ mod tests {
             result.is_err(),
             "Should fail to update non-existent project"
         );
-        
+
         if let Err(e) = result {
             match &e {
                 aliyun_log_rust_sdk::Error::Server { error_code, .. } => {
-                    assert_eq!(error_code, "ProjectNotExist", "Should return ProjectNotExist error");
+                    assert_eq!(
+                        error_code, "ProjectNotExist",
+                        "Should return ProjectNotExist error"
+                    );
                 }
                 _ => panic!("Expected Server error with ProjectNotExist, got: {}", e),
             }
@@ -263,11 +253,14 @@ mod tests {
             result.is_err(),
             "Should fail to delete non-existent project"
         );
-        
+
         if let Err(e) = result {
             match &e {
                 aliyun_log_rust_sdk::Error::Server { error_code, .. } => {
-                    assert_eq!(error_code, "ProjectNotExist", "Should return ProjectNotExist error");
+                    assert_eq!(
+                        error_code, "ProjectNotExist",
+                        "Should return ProjectNotExist error"
+                    );
                 }
                 _ => panic!("Expected Server error with ProjectNotExist, got: {}", e),
             }
@@ -294,4 +287,3 @@ mod tests {
         println!("✓ Correctly detected missing description parameter");
     }
 }
-
