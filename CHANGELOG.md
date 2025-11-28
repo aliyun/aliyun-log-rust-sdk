@@ -18,6 +18,12 @@
   - `get_logstore` - Get detailed logstore information and configuration
   - `list_logstores` - List logstores with pagination and filtering support
 
+- **Index Management APIs**: Complete support for logstore index configuration
+  - `create_index` - Create index configuration with full-text and field indexes
+  - `update_index` - Update index configuration for better query performance
+  - `delete_index` - Delete index configuration
+  - `get_index` - Get current index configuration details
+
 - **Consumer Group APIs**: Complete support for consumer group management
   - `create_consumer_group` - Create a consumer group for coordinated log consumption
   - `update_consumer_group` - Update consumer group configuration

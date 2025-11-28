@@ -34,6 +34,16 @@ Logstore 管理
 * `get_logstore <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.get_logstore>`_ - 获取 Logstore 的详细信息，包括配置和统计数据
 * `list_logstores <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.list_logstores>`_ - 列出项目中的所有 Logstore，支持分页和按名称、类型等过滤
 
+索引管理
+--------
+
+用于管理 Logstore 索引的 API，索引能够实现高效的日志查询和分析。
+
+* `create_index <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.create_index>`_ - 创建索引配置，支持全文索引和字段索引
+* `update_index <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.update_index>`_ - 更新索引配置以优化查询性能
+* `delete_index <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.delete_index>`_ - 删除索引配置
+* `get_index <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.get_index>`_ - 获取当前索引配置，包括全文索引和字段索引
+
 
 日志操作
 --------

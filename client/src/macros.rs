@@ -12,4 +12,17 @@ macro_rules! check_required {
     };
 }
 
+#[macro_export]
+macro_rules! token_list {
+    [$($t:expr),* $(,)?] => {
+        {
+            let mut v = Vec::new();
+            $(
+                v.push($t.to_string());
+            )*
+            v
+        }
+    };
+}
+
 pub(crate) use check_required;

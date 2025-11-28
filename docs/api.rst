@@ -33,6 +33,16 @@ APIs for managing logstores, which are units for log storage, querying, and anal
 * `get_logstore <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.get_logstore>`_ - Get detailed logstore information including configuration and statistics
 * `list_logstores <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.list_logstores>`_ - List all logstores in a project with pagination and filtering by name, type, or mode
 
+Index Management
+----------------
+
+APIs for managing logstore index, which enable efficient log querying and analysis.
+
+* `create_index <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.create_index>`_ - Create index configuration with full-text search and field-specific indexes
+* `update_index <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.update_index>`_ - Update index configuration to optimize query performance
+* `delete_index <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.delete_index>`_ - Delete index configuration
+* `get_index <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.get_index>`_ - Get current index configuration including full-text and field indexes
+
 
 Log Operations
 --------------
