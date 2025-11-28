@@ -18,6 +18,10 @@ use crate::{
     compress::{compress, decompress, CompressType},
     error::{Error, Result},
 };
+mod consumer_group;
+pub use consumer_group::*;
+
+pub(crate) use crate::macros::*;
 
 mod pull_logs;
 pub use pull_logs::*;
@@ -160,7 +164,12 @@ impl Handle {
         mut headers: http::HeaderMap,
     ) -> Result<DecompressedResponse> {
         if !headers.contains_key(USER_AGENT) {
-            headers.insert(USER_AGENT, user_agent().parse().unwrap());
+            headers.insert(
+                USER_AGENT,
+                user_agent()
+                    .parse()
+                    .expect("fail to insert UserAgent into headers"),
+            );
         }
 
         // prepare http request parameters
@@ -207,7 +216,9 @@ impl Handle {
             );
             sleep(backoff).await;
         }
-        panic!("unreachable")
+        Err(Error::Other(anyhow::anyhow!(
+            "unreachable, this is a bug, please open an issue to report it."
+        )))
     }
 
     async fn send_signed_http(
@@ -223,7 +234,7 @@ impl Handle {
             http::Method::PUT => self.http_client.put(url.clone()),
             http::Method::DELETE => self.http_client.delete(url.clone()),
             _ => {
-                panic!("Unsupported HTTP method: {:?}", method);
+                return Err(Error::Other(anyhow::anyhow!("Unsupported HTTP method: {method:?}, this is a bug, please open an issue to report it.")));
             }
         };
 
@@ -289,11 +300,11 @@ impl Handle {
     ) -> Result<url::Url, ConfigError> {
         let result = match query_params {
             Some(query_params) if query_params.is_empty() => {
-                url::Url::parse(&format!("{}{}", host, path))
+                url::Url::parse(&format!("{host}{path}"))
             }
-            None => url::Url::parse(&format!("{}{}", host, path)),
+            None => url::Url::parse(&format!("{host}{path}")),
             Some(query_params) => {
-                url::Url::parse_with_params(&format!("{}{}", host, path), query_params)
+                url::Url::parse_with_params(&format!("{host}{path}"), query_params)
             }
         };
         Ok(result?)
@@ -309,11 +320,17 @@ impl Handle {
         let body_raw_size = body.len();
         headers.insert(
             LOG_BODY_RAW_SIZE,
-            body_raw_size.to_string().parse().unwrap(),
+            body_raw_size
+                .to_string()
+                .parse()
+                .expect("fail to insert bodyRawSize into header"),
         );
         headers.insert(
             LOG_COMPRESS_TYPE,
-            compress_type.to_string().parse().unwrap(),
+            compress_type
+                .to_string()
+                .parse()
+                .expect("fail to insert compressType into header"),
         );
 
         compress(body, compress_type)
@@ -356,10 +373,3 @@ pub type BoxFuture<T> =
     ::std::pin::Pin<::std::boxed::Box<dyn ::std::future::Future<Output = T> + ::std::marker::Send>>;
 
 pub type ResponseResultBoxFuture<B> = BoxFuture<Result<Response<B>, Error>>;
-
-pub(crate) fn require_param<T>(
-    name: &'static str,
-    data: Option<T>,
-) -> std::result::Result<T, RequestError> {
-    data.ok_or_else(|| RequestErrorKind::MissingRequiredParameter(name.to_string()).into())
-}

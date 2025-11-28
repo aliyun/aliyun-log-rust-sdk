@@ -78,15 +78,11 @@ impl PutLogsRequestBuilder {
     }
 
     fn build(self) -> BuildResult<PutLogsRequest> {
+        check_required!(("log_group", self.log_group));
         Ok((
             self.handle,
             PutLogsRequest {
-                log_group: self
-                    .log_group
-                    .ok_or_else(|| {
-                        crate::RequestErrorKind::MissingRequiredParameter("log_group".to_string())
-                    })
-                    .map_err(RequestError::from)?,
+                log_group: self.log_group.unwrap(),
                 path: self.path,
                 project: self.project,
             },

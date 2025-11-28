@@ -221,7 +221,7 @@ const DEFAULT_MAX_RETRY_BACKOFF: std::time::Duration = std::time::Duration::from
 
 lazy_static! {
     static ref ENDPOINT_REGEX: Regex =
-        Regex::new(r"^(https?://)?([a-zA-Z0-9.-]+)(:\d+)?$").unwrap();
+        Regex::new(r"^(https?://)?([a-zA-Z0-9.-]+)(:\d+)?$").expect("endpoint regex is invalid");
 }
 
 const SCHEME_HTTP: &str = "http://";

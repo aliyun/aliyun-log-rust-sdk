@@ -1,5 +1,5 @@
 use super::*;
-use crate::{RequestErrorKind, ResponseResult};
+use crate::ResponseResult;
 use serde::Deserialize;
 
 impl crate::client::Client {
@@ -105,11 +105,7 @@ impl GetCursorRequestBuilder {
     }
 
     fn build(self) -> BuildResult<GetCursorRequest> {
-        if self.cursor_pos.is_none() {
-            return Err(RequestErrorKind::MissingRequiredParameter(
-                "cursor_pos".to_string(),
-            ))?;
-        }
+        check_required!(("cursor_pos", self.cursor_pos));
         Ok((
             self.handle,
             GetCursorRequest {

@@ -58,14 +58,19 @@ impl PutLogsRawRequestBuilder {
     }
 
     fn build(self) -> BuildResult<PutLogsRawRequest> {
+        check_required!(
+            ("data", self.data),
+            ("raw_size", self.raw_size),
+            ("compress_type", self.compress_type)
+        );
         Ok((
             self.handle,
             PutLogsRawRequest {
                 path: self.path,
                 project: self.project,
-                data: require_param("data", self.data)?,
-                raw_size: require_param("raw_size", self.raw_size)?,
-                compress_type: require_param("compress_type", self.compress_type)?,
+                data: self.data.unwrap(),
+                raw_size: self.raw_size.unwrap(),
+                compress_type: self.compress_type.unwrap(),
             },
         ))
     }
@@ -101,7 +106,10 @@ impl Request for PutLogsRawRequest {
         let mut headers = http::HeaderMap::new();
         headers.insert(
             LOG_BODY_RAW_SIZE,
-            self.raw_size.to_string().parse().unwrap(),
+            self.raw_size
+                .to_string()
+                .parse()
+                .expect("fail to insert BodyRawSize into headers"),
         );
         headers.insert(
             LOG_COMPRESS_TYPE,

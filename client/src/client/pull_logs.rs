@@ -4,7 +4,7 @@ use crate::compress::CompressType;
 use crate::request::Request;
 use crate::response::FromHttpResponse;
 use crate::utils::ValueGetter;
-use crate::{RequestErrorKind, ResponseError, ResponseErrorKind, ResponseResult};
+use crate::{ResponseError, ResponseErrorKind, ResponseResult};
 use aliyun_log_sdk_protobuf::{LogGroup, LogGroupList};
 use getset::Getters;
 use http::header::{ACCEPT, ACCEPT_ENCODING};
@@ -160,16 +160,7 @@ impl PullLogsRequestBuilder {
     }
 
     fn build(self) -> BuildResult<PullLogsRequest> {
-        if self.cursor.is_none() {
-            return Err(RequestErrorKind::MissingRequiredParameter(
-                "cursor".to_string(),
-            ))?;
-        }
-        if self.count.is_none() {
-            return Err(RequestErrorKind::MissingRequiredParameter(
-                "count".to_string(),
-            ))?;
-        }
+        check_required!(("cursor", self.cursor), ("count", self.count));
 
         Ok((
             self.handle.clone(),
@@ -270,7 +261,10 @@ impl Request for PullLogsRequest {
         headers.insert(ACCEPT, LOG_PROTOBUF);
         headers.insert(
             ACCEPT_ENCODING,
-            CompressType::Lz4.to_string().parse().unwrap(),
+            CompressType::Lz4
+                .to_string()
+                .parse()
+                .expect("fail to insert CompressType into headers"),
         );
         headers
     }

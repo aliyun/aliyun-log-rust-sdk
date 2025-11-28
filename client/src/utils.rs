@@ -35,7 +35,7 @@ impl ValueGetter for http::HeaderMap<http::HeaderValue> {
 pub(crate) const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub(crate) fn user_agent() -> String {
-    format!("aliyun-log-rust-sdk/{}", VERSION)
+    format!("aliyun-log-rust-sdk/{VERSION}")
 }
 
 /// Check if an Option<String> is None or contains an empty string
@@ -48,6 +48,6 @@ mod tests {
     use super::*;
     #[test]
     fn test_user_agent() {
-        assert_eq!(user_agent(), format!("aliyun-log-rust-sdk/{}", VERSION));
+        assert_eq!(user_agent(), format!("aliyun-log-rust-sdk/{VERSION}"));
     }
 }

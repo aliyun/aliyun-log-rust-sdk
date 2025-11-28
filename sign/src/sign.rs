@@ -163,7 +163,7 @@ pub fn sign_v1(
         access_key_secret.as_bytes(),
         message.as_bytes(),
     ));
-    let auth = format!("LOG {}:{}", access_key_id, signature);
+    let auth = format!("LOG {access_key_id}:{signature}");
     headers.insert(LOG_AUTHORIZATION, HeaderValue::from_str(&auth)?);
     Ok(auth)
 }

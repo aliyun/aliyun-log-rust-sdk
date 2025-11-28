@@ -1,12 +1,16 @@
-# aliyun-log-rust-sdk
+# Aliyun Log Rust SDK
+
+English | [简体中文](README_CN.md)
+
 This crate is rust sdk for access Aliyun Log Service.  
 This SDK uses [tokio](https://docs.rs/tokio/latest/tokio/) as async runtime.  
 
-For more [Documents](https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html).
+Check all [supported APIs](../docs/api.rst) here.
 
 ## Quick Start
 
 1. Create a client
+
 ```rust
 use aliyun_log_rust_sdk::{Client, Config, FromConfig};
 let config = Config::builder()
