@@ -103,7 +103,7 @@ pub struct GetLogsRequest {
     topic: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    lines: Option<u32>,
+    line: Option<u32>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     offset: Option<u32>,
@@ -253,7 +253,7 @@ impl GetLogsRequestBuilder {
                 from: self.from.unwrap(),
                 to: self.to.unwrap(),
                 topic: self.topic,
-                lines: self.lines,
+                line: self.lines,
                 offset: self.offset,
                 reverse: self.reverse,
                 query: self.query,
