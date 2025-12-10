@@ -30,7 +30,7 @@ mod tests {
             .from(now - 3000)
             .to(now)
             .offset(0)
-            .lines(100)
+            .line(100)
             .query("*")
             .send()
             .await
