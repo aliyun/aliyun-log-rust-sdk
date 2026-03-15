@@ -123,11 +123,7 @@ impl Request for GetConsumerGroupCheckpointRequest {
     }
 
     fn query_params(&self) -> Option<Vec<(String, String)>> {
-        if let Some(shard_id) = self.shard_id {
-            Some(vec![("shard".to_string(), shard_id.to_string())])
-        } else {
-            None
-        }
+        self.shard_id.map(|shard_id| vec![("shard".to_string(), shard_id.to_string())])
     }
 }
 
