@@ -54,6 +54,7 @@ Logstore 管理
 * `put_logs_raw <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.put_logs_raw>`_ - 使用自定义压缩方式向日志库写入原始日志数据
 * `get_logs <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.get_logs>`_ - 从日志库查询某一时间范围内的日志，支持使用查询或 sql 等语法
 * `pull_logs <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.pull_logs>`_ - 从特定 shard 分片拉取日志以进行消费
+* `pull_logs_raw <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.pull_logs_raw>`_ - 从特定 shard 拉取解压后的原始 protobuf 字节数据，不进行反序列化
 * `get_cursor <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.get_cursor>`_ - 获取从特定时间或位置的日志游标位置
 
 分片管理

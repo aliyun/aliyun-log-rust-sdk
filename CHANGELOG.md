@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.0]
+
+### Added
+
+- **New Raw Data API**: Added `pull_logs_raw` for retrieving raw protobuf bytes
+  - `pull_logs_raw` - Pull decompressed raw protobuf bytes from a shard without deserialization
+  - Returns `bytes::Bytes` containing raw Protocol Buffer data
+  - Supports all the same parameters as `pull_logs`: `cursor`, `end_cursor`, `count`, `query`, `query_id`
+  - Useful for scenarios requiring direct protobuf data access or custom processing pipelines
+
 ## [0.2.0]
 
 ### Added

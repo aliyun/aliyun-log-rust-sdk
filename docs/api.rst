@@ -53,6 +53,7 @@ APIs for writing and querying logs from logstores.
 * `put_logs_raw <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.put_logs_raw>`_ - Write raw log data to a logstore with custom compression
 * `get_logs <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.get_logs>`_ - Query logs within a time range using query or SQL syntax
 * `pull_logs <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.pull_logs>`_ - Pull logs from a specific shard for consumption
+* `pull_logs_raw <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.pull_logs_raw>`_ - Pull decompressed raw protobuf bytes from a shard without deserialization
 * `get_cursor <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.get_cursor>`_ - Get a cursor position from a specific time or location
 
 Shard Management

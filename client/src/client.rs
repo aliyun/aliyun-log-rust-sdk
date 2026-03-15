@@ -34,6 +34,8 @@ pub(crate) use crate::macros::*;
 
 mod pull_logs;
 pub use pull_logs::*;
+mod pull_logs_raw;
+pub use pull_logs_raw::*;
 mod put_logs;
 pub use put_logs::*;
 mod get_cursor;
