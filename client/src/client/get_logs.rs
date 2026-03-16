@@ -69,7 +69,7 @@ impl crate::client::Client {
             from: None,
             to: None,
             topic: None,
-            lines: None,
+            line: None,
             offset: None,
             reverse: None,
             query: None,
@@ -103,7 +103,7 @@ pub struct GetLogsRequest {
     topic: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    lines: Option<u32>,
+    line: Option<u32>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     offset: Option<u32>,
@@ -160,7 +160,7 @@ pub struct GetLogsRequestBuilder {
     from: Option<i64>,
     to: Option<i64>,
     topic: Option<String>,
-    lines: Option<u32>,
+    line: Option<u32>,
     offset: Option<u32>,
     reverse: Option<bool>,
     query: Option<String>,
@@ -197,8 +197,8 @@ impl GetLogsRequestBuilder {
     }
 
     /// The number of logs to return, required if the query is not in sql mode.
-    pub fn lines(mut self, lines: u32) -> Self {
-        self.lines = Some(lines);
+    pub fn line(mut self, lines: u32) -> Self {
+        self.line = Some(lines);
         self
     }
 
@@ -253,7 +253,7 @@ impl GetLogsRequestBuilder {
                 from: self.from.unwrap(),
                 to: self.to.unwrap(),
                 topic: self.topic,
-                lines: self.lines,
+                line: self.line,
                 offset: self.offset,
                 reverse: self.reverse,
                 query: self.query,
