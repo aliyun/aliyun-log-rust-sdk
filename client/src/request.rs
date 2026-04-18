@@ -1,11 +1,11 @@
-use crate::compress::CompressType;
+use crate::compress::CompressionType;
 use crate::response::FromHttpResponse;
 use crate::RequestError;
 
 pub(crate) trait Request: Sized + Send + Sync {
     const HTTP_METHOD: http::Method;
     const CONTENT_TYPE: Option<http::HeaderValue> = None;
-    const COMPRESS_TYPE: Option<CompressType> = None;
+    const COMPRESS_TYPE: Option<CompressionType> = None;
     type ResponseBody: FromHttpResponse + Send + Sync + Sized;
     fn project(&self) -> Option<&str>;
     fn path(&self) -> &str;

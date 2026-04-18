@@ -1,6 +1,6 @@
 use super::*;
 use super::{BuildResult, HandleRef};
-use crate::compress::CompressType;
+use crate::compress::CompressionType;
 use crate::request::Request;
 use crate::response::FromHttpResponse;
 use crate::utils::ValueGetter;
@@ -248,7 +248,7 @@ impl Request for PullLogsRawRequest {
         headers.insert(ACCEPT, LOG_PROTOBUF);
         headers.insert(
             ACCEPT_ENCODING,
-            CompressType::Lz4
+            CompressionType::Lz4
                 .to_string()
                 .parse()
                 .expect("fail to insert CompressType into headers"),

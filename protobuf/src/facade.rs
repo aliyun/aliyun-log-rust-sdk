@@ -127,7 +127,7 @@ impl LogGroup {
 /// ```
 #[derive(Default, Clone, PartialEq, Debug, Getters, MutGetters, Setters)]
 pub struct Log {
-    /// The timestamp of the log in Unix format, e.g., 1690254376.
+    /// The timestamp of the log in Unix seconds, e.g., 1690254376.
     #[getset(get = "pub", set = "pub")]
     pub(crate) time: u32,
 

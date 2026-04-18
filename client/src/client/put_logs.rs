@@ -1,5 +1,5 @@
-use crate::compress::CompressType;
 use crate::error::Result;
+use crate::compress::CompressionType;
 use crate::{common::*, RequestError, RequestErrorKind};
 use aliyun_log_sdk_protobuf::LogGroup;
 
@@ -101,7 +101,7 @@ struct PutLogsRequest {
 impl Request for PutLogsRequest {
     const HTTP_METHOD: http::Method = http::Method::POST;
     const CONTENT_TYPE: Option<http::HeaderValue> = Some(LOG_PROTOBUF);
-    const COMPRESS_TYPE: Option<CompressType> = Some(CompressType::Lz4);
+    const COMPRESS_TYPE: Option<CompressionType> = Some(CompressionType::Lz4);
     type ResponseBody = ();
 
     fn project(&self) -> Option<&str> {
