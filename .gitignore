@@ -7,3 +7,4 @@
 .env.test.local
 .env.production.local
 **/Cargo.lock
+AGENTS.md
