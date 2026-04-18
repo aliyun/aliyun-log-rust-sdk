@@ -77,7 +77,7 @@ impl Default for ProducerBuilder {
             export_timeout: Duration::from_secs(5),
             max_retries: 3,
             base_backoff: Duration::from_millis(100),
-            max_backoff: Duration::from_secs(3),
+            max_backoff: Duration::from_secs(50),
             callback: None,
             sink: None,
         }

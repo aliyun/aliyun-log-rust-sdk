@@ -205,8 +205,26 @@ fn log_record_to_proto(record: &LogRecord) -> Log {
     log
 }
 
-// Retry policy: 403 (throttled) retryable with longer backoff, 500+ retryable,
-// 400/401/405 and other 4xx are not retryable.
+// Retriable error codes (aligned with aliyun-log-java-producer RetriableErrors).
+// Quota errors are also throttled and use max_backoff as a floor.
+const RETRIABLE_ERROR_CODES: &[&str] = &[
+    "RequestError",
+    "Unauthorized",
+    "WriteQuotaExceed",
+    "ShardWriteQuotaExceed",
+    "ExceedQuota",
+    "InternalServerError",
+    "ServerBusy",
+    "BadResponse",
+    "ProjectNotExists",
+    "LogstoreNotExists",
+    "SocketTimeout",
+    "SignatureNotMatch",
+];
+
+const THROTTLE_ERROR_CODES: &[&str] =
+    &["WriteQuotaExceed", "ShardWriteQuotaExceed", "ExceedQuota"];
+
 fn map_client_error(err: ClientError) -> DeliveryError {
     match err {
         ClientError::Network(network_err) => {
@@ -219,15 +237,16 @@ fn map_client_error(err: ClientError) -> DeliveryError {
         ClientError::Server {
             error_code,
             error_message,
-            http_status,
+            http_status: _,
             request_id,
         } => {
-            let throttled = http_status == 403;
+            let retryable = RETRIABLE_ERROR_CODES.contains(&error_code.as_str());
+            let throttled = THROTTLE_ERROR_CODES.contains(&error_code.as_str());
             DeliveryError::Server {
                 code: error_code,
                 message: error_message,
                 request_id,
-                retryable: throttled || http_status >= 500,
+                retryable,
                 throttled,
             }
         }
