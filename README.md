@@ -8,6 +8,11 @@ This is Rust SDK for accessing Aliyun Log Service.
 
 [API List](docs/api.rst) | [Docs](https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/)
 
+## Crates
+
+- `aliyun-log-rust-sdk`: low-level client for Log Service APIs
+- `aliyun-log-rust-sdk-producer`: async batching producer for log ingestion, with retries and backpressure. See [producer guide](producer/README.md).
+
 ## Quick Start
 
 ### 1. Add Dependency

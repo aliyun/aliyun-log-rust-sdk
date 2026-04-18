@@ -3,23 +3,24 @@ use std::fmt::Display;
 use crate::{CompressionError, DecompressionError};
 
 #[non_exhaustive]
-pub(crate) enum CompressType {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CompressionType {
     Lz4,
 }
 
-impl Display for CompressType {
+impl Display for CompressionType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CompressType::Lz4 => write!(f, "lz4"),
+            CompressionType::Lz4 => write!(f, "lz4"),
         }
     }
 }
 
-impl TryFrom<&str> for CompressType {
+impl TryFrom<&str> for CompressionType {
     type Error = DecompressionError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
-            "lz4" => Ok(CompressType::Lz4),
+            "lz4" => Ok(CompressionType::Lz4),
             _ => Err(DecompressionError::UnsupportedCompressType(
                 value.to_string(),
             )),
@@ -29,10 +30,10 @@ impl TryFrom<&str> for CompressType {
 
 pub(crate) fn compress(
     body: impl AsRef<[u8]>,
-    compress_type: &CompressType,
+    compress_type: &CompressionType,
 ) -> std::result::Result<Vec<u8>, CompressionError> {
     match compress_type {
-        CompressType::Lz4 => {
+        CompressionType::Lz4 => {
             let compressed = lz4::block::compress(body.as_ref(), None, false)?;
             Ok(compressed)
         }
@@ -45,17 +46,17 @@ pub(crate) fn decompress(
     compress_type: impl AsRef<str>,
     raw_size: usize,
 ) -> std::result::Result<Vec<u8>, DecompressionError> {
-    let compress_type: CompressType = compress_type.as_ref().try_into()?;
+    let compress_type: CompressionType = compress_type.as_ref().try_into()?;
     do_decompress(body, &compress_type, raw_size)
 }
 
 pub(crate) fn do_decompress(
     body: impl AsRef<[u8]>,
-    compress_type: &CompressType,
+    compress_type: &CompressionType,
     raw_size: usize,
 ) -> std::result::Result<Vec<u8>, DecompressionError> {
     match compress_type {
-        CompressType::Lz4 => {
+        CompressionType::Lz4 => {
             let decompressed = lz4::block::decompress(body.as_ref(), Some(raw_size as i32))?;
             Ok(decompressed)
         }

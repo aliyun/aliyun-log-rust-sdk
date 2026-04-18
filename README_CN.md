@@ -8,6 +8,11 @@
 
 [API列表](docs/api_cn.rst) | [文档](https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/)
 
+## Crates
+
+- `aliyun-log-rust-sdk`：日志服务 API 的底层客户端
+- `aliyun-log-rust-sdk-producer`：面向日志写入场景的异步批量 Producer，支持重试和背压。见 [producer 用户指南](producer/README_CN.md)。
+
 ## 快速开始
 
 ### 1. 添加依赖

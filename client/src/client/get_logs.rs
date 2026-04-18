@@ -1,5 +1,5 @@
 use super::*;
-use crate::{compress::CompressType, error::Result};
+use crate::{compress::CompressionType, error::Result};
 use crate::{RequestError, RequestErrorKind, ResponseResult};
 use getset::Getters;
 use http::header::ACCEPT_ENCODING;
@@ -143,7 +143,7 @@ impl Request for GetLogsRequest {
         let mut headers = http::HeaderMap::new();
         headers.insert(
             ACCEPT_ENCODING,
-            CompressType::Lz4
+            CompressionType::Lz4
                 .to_string()
                 .parse()
                 .expect("fail to insert CompressType into headers"),

@@ -1,0 +1,31 @@
+[package]
+name = "aliyun-log-rust-sdk-producer"
+version = "0.1.0"
+edition = "2021"
+authors = ["Aliyun Log Service"]
+description = "Async log producer for Aliyun Log Service"
+license = "MIT"
+readme = "README.md"
+
+[dependencies]
+aliyun-log-rust-sdk = { path = "../client" }
+aliyun-log-sdk-protobuf = { path = "../protobuf" }
+async-trait = "0.1.89"
+backon = "1.6.0"
+bytes = "1.10.1"
+lz4 = "1.28.1"
+thiserror = "2.0.12"
+log = "0.4.27"
+tokio = { version = "1.44.2", features = ["sync", "time", "rt", "macros"] }
+tower = { version = "0.5.2", features = ["limit", "util"] }
+
+[dev-dependencies]
+criterion = { version = "0.5.1", features = ["async_tokio"] }
+env_logger = "0.11.8"
+envy = "0.4.2"
+serde = { version = "1.0.219", features = ["derive"] }
+tokio = { version = "1.44.2", features = ["full"] }
+
+[[bench]]
+name = "mock_sink"
+harness = false

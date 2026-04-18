@@ -10,12 +10,12 @@ use aliyun_log_sdk_sign::sign_v1;
 use http::header::USER_AGENT;
 use http::HeaderMap;
 
-use log::debug;
+use log::{debug, warn};
 
 use tokio::time::sleep;
 
 use crate::{
-    compress::{compress, decompress, CompressType},
+    compress::{compress, decompress, CompressionType},
     error::{Error, Result},
 };
 mod consumer_group;
@@ -267,12 +267,30 @@ impl Handle {
             Some(b) => req.body(b).headers(headers.clone()),
             None => req.headers(headers.clone()),
         };
-        self.send_reqwest(req.build()?).await
+        let request = req.build()?;
+        debug!(
+            target: "aliyun_log_rust_sdk::client",
+            "sending request: method={}, url={}, has_body={}, headers={}",
+            request.method(),
+            request.url(),
+            request.body().is_some(),
+            request.headers().len(),
+        );
+        self.send_reqwest(request).await
     }
 
     async fn send_reqwest(&self, request: reqwest::Request) -> Result<DecompressedResponse> {
+        let method = request.method().clone();
+        let url = request.url().clone();
         let response = self.http_client.execute(request).await?;
         let status = response.status();
+        debug!(
+            target: "aliyun_log_rust_sdk::client",
+            "received response: method={}, url={}, status={}",
+            method,
+            url,
+            status,
+        );
         match status {
             http::status::StatusCode::OK => {
                 let resp_headers = response.headers().to_owned();
@@ -287,6 +305,15 @@ impl Handle {
             _ => {
                 let request_id = response.headers().get_str(LOG_REQUEST_ID);
                 let resp_body = response.text().await?;
+                warn!(
+                    target: "aliyun_log_rust_sdk::client",
+                    "server returned error: method={}, url={}, status={}, request_id={:?}, body={}",
+                    method,
+                    url,
+                    status,
+                    request_id,
+                    resp_body,
+                );
                 Err(Error::server_error(
                     status,
                     request_id,
@@ -337,7 +364,7 @@ impl Handle {
 
     fn do_compress(
         &self,
-        compress_type: &CompressType,
+        compress_type: &CompressionType,
         body: impl AsRef<[u8]>,
         headers: &mut http::HeaderMap,
     ) -> std::result::Result<Vec<u8>, CompressionError> {
