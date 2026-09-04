@@ -35,9 +35,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
     let client = Client::from_config(config_builder.build()?)?;
 
-    let consumer_config = ConsumerConfig::new(project, logstore, consumer_group, consumer_name)
+    let mut consumer_config = ConsumerConfig::new(project, logstore, consumer_group, consumer_name)
         // This value is only used when the consumer group has no saved checkpoint.
         .cursor_position(CursorPosition::Begin);
+
+    if let Ok(query) = env::var("SLS_QUERY") {
+        if !query.is_empty() {
+            consumer_config = consumer_config.query(query);
+        }
+    }
 
     let processor = ProcessFn::new(|shard_id, log_groups, checkpoint| async move {
         for log_group in log_groups.iter() {
