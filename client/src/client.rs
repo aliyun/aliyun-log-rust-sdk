@@ -430,16 +430,9 @@ impl Handle {
             .into());
         }
         if raw_size == 0 {
-            return if body.is_empty() {
-                Ok(Vec::new())
-            } else {
-                Err(ResponseErrorKind::DecompressedSizeMismatch {
-                    expected: 0,
-                    actual: body.len(),
-                    request_id,
-                }
-                .into())
-            };
+            // SLS may return a non-empty compression sentinel for an empty
+            // result. Match the Go SDK and treat raw size zero as empty.
+            return Ok(Vec::new());
         }
 
         let decompressed = decompress(body, &compress_type, raw_size).map_err(|source| {
@@ -525,12 +518,11 @@ mod tests {
             .is_err());
 
         headers.insert(LOG_BODY_RAW_SIZE, http::HeaderValue::from_static("0"));
-        assert!(client.handle.do_decompress(vec![1], &headers).is_err());
         assert_eq!(
             client
                 .handle
-                .do_decompress(Vec::<u8>::new(), &headers)
-                .expect("an explicitly empty response is valid"),
+                .do_decompress(vec![1], &headers)
+                .expect("SLS uses a non-empty sentinel for some empty responses"),
             Vec::<u8>::new()
         );
     }
