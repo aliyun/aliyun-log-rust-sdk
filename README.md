@@ -30,6 +30,9 @@ let config = Config::builder()
 let client = Client::from_config(config)?;
 ```
 
+Endpoints without a scheme default to HTTPS. For expiring STS credentials and
+custom retry limits, use `CredentialsProvider` and `RetryPolicy`.
+
 ### 3. Write Logs
 
 ```rust
@@ -64,6 +67,38 @@ let resp = client.get_logs("my-project", "my-logstore")
     .lines(100)
     .send()
     .await?;
+```
+
+### 5. Consume a Logstore
+
+`ConsumerWorker` coordinates shard assignment through an SLS consumer group,
+runs one asynchronous task per assigned shard, and flushes checkpoints during a
+graceful shutdown.
+
+```rust
+use aliyun_log_rust_sdk::consumer::{
+    ConsumerConfig, ConsumerWorker, CursorPosition, ProcessFn, ProcessOutcome,
+};
+
+let consumer_config = ConsumerConfig::new(
+    "my-project",
+    "my-logstore",
+    "my-consumer-group",
+    "consumer-1",
+)
+.cursor_position(CursorPosition::Begin);
+
+let processor = ProcessFn::new(|shard, log_groups, checkpoint| async move {
+    println!("shard {shard}: {} log groups", log_groups.len());
+    checkpoint.save_checkpoint(false).await?;
+    Ok::<_, aliyun_log_rust_sdk::consumer::Error>(ProcessOutcome::Continue)
+});
+
+let mut worker = ConsumerWorker::new(client, consumer_config, processor)?;
+worker.start().await?;
+
+// Call this after receiving SIGTERM/Ctrl-C.
+worker.stop_and_wait().await?;
 ```
 
 ## Contributing

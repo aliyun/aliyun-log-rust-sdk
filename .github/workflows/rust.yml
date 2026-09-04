@@ -16,11 +16,23 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+    - name: Clippy
+      run: cargo clippy --workspace --all-targets --all-features -- -D warnings
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --workspace --all-features --verbose
     - name: Run tests
-      run: cargo test --verbose --lib
+      run: cargo test --workspace --verbose --lib
     - name: Run doc test
-      run: cargo test --verbose --doc
+      run: cargo test --workspace --verbose --doc
+    - name: Check documentation warnings
+      env:
+        RUSTDOCFLAGS: -D warnings
+      run: cargo doc --workspace --all-features --no-deps
     - name: build integration tests
       run: cargo test --test '*' --no-run
+    - name: Dependency security audit
+      uses: rustsec/audit-check@v2
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}

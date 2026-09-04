@@ -3,8 +3,8 @@ use std::time::Duration;
 use crate::config::Config;
 use crate::utils::{user_agent, ValueGetter};
 use crate::{
-    common::*, CompressionError, ConfigError, RequestError, RequestErrorKind, ResponseErrorKind,
-    ResponseResult,
+    common::*, CompressionError, ConfigError, RequestError, RequestErrorKind, ResponseError,
+    ResponseErrorKind, ResponseResult,
 };
 use aliyun_log_sdk_sign::sign_v1;
 use http::header::USER_AGENT;
@@ -81,6 +81,7 @@ pub use put_logs_raw::*;
 /// ```
 ///
 /// For more configuration options, see [`ConfigBuilder`](crate::config::ConfigBuilder).
+#[derive(Clone)]
 pub struct Client {
     handle: HandleRef,
 }
@@ -200,46 +201,63 @@ impl Handle {
         // prepare http request parameters
         let url = self.build_url(host.as_ref(), path.as_ref(), &query_params)?;
 
-        // do request signing
         let query_params = query_params.unwrap_or_default();
+        let policy = &self.config.retry_policy;
+        let started = std::time::Instant::now();
+        for attempt in 0..=policy.max_retries {
+            let credentials = self
+                .config
+                .credentials_provider
+                .credentials()
+                .await
+                .map_err(Error::CredentialsProvider)?;
+            if !credentials.validate() {
+                return Err(ConfigError::InvalidAccessKey.into());
+            }
+            let mut attempt_headers = headers.clone();
+            sign_v1(
+                credentials.access_key_id(),
+                credentials.access_key_secret(),
+                credentials.security_token(),
+                method.clone(),
+                path.as_ref(),
+                &mut attempt_headers,
+                query_params.clone().into(),
+                body.as_deref(),
+            )
+            .map_err(RequestErrorKind::from)
+            .map_err(RequestError::from)?;
 
-        sign_v1(
-            &self.config.access_key_id,
-            &self.config.access_key_secret,
-            self.config.security_token.as_deref(),
-            method.clone(),
-            path.as_ref(),
-            &mut headers,
-            query_params.into(),
-            body.as_deref(),
-        )
-        .map_err(RequestErrorKind::from)
-        .map_err(RequestError::from)?;
-
-        let max_retry = self.config.max_retry + 1;
-        for i in 0..max_retry {
             // here body.clone() is O(1), no underlying data is copied
             match self
-                .send_signed_http(&method, &url, &headers, body.clone())
+                .send_signed_http(&method, &url, &attempt_headers, body.clone())
                 .await
             {
                 Ok(resp) => {
                     return Ok(resp);
                 }
                 Err(err) => {
-                    debug!("fail to send on {} err: {:?}", i, &err.to_string());
-                    if !self.should_retry(&err) || i + 1 >= max_retry {
+                    debug!("request attempt {attempt} failed: {}", err);
+                    if !self.should_retry(&method, &err) || attempt >= policy.max_retries {
                         return Err(err);
                     }
+                    let backoff = if let Some(retry_after) = err.retry_after() {
+                        retry_after
+                    } else {
+                        let backoff =
+                            exponential_backoff(policy.base_backoff, attempt, policy.max_backoff);
+                        if policy.jitter {
+                            full_jitter(backoff)
+                        } else {
+                            backoff
+                        }
+                    };
+                    if started.elapsed().saturating_add(backoff) >= policy.max_elapsed {
+                        return Err(err);
+                    }
+                    sleep(backoff).await;
                 }
             }
-
-            let backoff = exponential_backoff(
-                self.config.base_retry_backoff,
-                i,
-                self.config.max_retry_backoff,
-            );
-            sleep(backoff).await;
         }
         Err(Error::Other(anyhow::anyhow!(
             "unreachable, this is a bug, please open an issue to report it."
@@ -286,21 +304,34 @@ impl Handle {
             }
             _ => {
                 let request_id = response.headers().get_str(LOG_REQUEST_ID);
-                let resp_body = response.text().await?;
+                let retry_after = parse_retry_after(response.headers());
+                let resp_body = response.bytes().await?;
                 Err(Error::server_error(
                     status,
                     request_id,
-                    resp_body.as_bytes(),
+                    resp_body,
+                    retry_after,
                 ))
             }
         }
     }
 
-    fn should_retry(&self, err: &Error) -> bool {
-        match err {
-            Error::Network(_) => true,
-            Error::Server { http_status, .. } => *http_status >= 500 && *http_status <= 503,
-            _ => false,
+    fn should_retry(&self, method: &http::Method, err: &Error) -> bool {
+        let is_read = *method == http::Method::GET;
+        if matches!(err, Error::Network(_)) {
+            // A failed write may have reached SLS even when its response was lost.
+            return is_read;
+        }
+        let status = match err {
+            Error::Server { http_status, .. } | Error::HttpResponse { http_status, .. } => {
+                *http_status
+            }
+            _ => return false,
+        };
+        if is_read {
+            status == 429 || (500..=599).contains(&status)
+        } else {
+            status == 429 || matches!(status, 500 | 502 | 503)
         }
     }
 
@@ -370,31 +401,220 @@ impl Handle {
         if compress_type.is_empty() {
             return Ok(body.into());
         }
-        let raw_size = headers.get_i32_or_default(&LOG_BODY_RAW_SIZE, 0);
+        let body = body.into();
+        let request_id = headers.get_str(LOG_REQUEST_ID);
+        let raw_size_value = headers.get(&LOG_BODY_RAW_SIZE).ok_or_else(|| {
+            ResponseError::from(ResponseErrorKind::InvalidCompressionHeader {
+                header: "x-log-bodyrawsize",
+                reason: "header is missing".into(),
+                request_id: request_id.clone(),
+            })
+        })?;
+        let raw_size = raw_size_value
+            .to_str()
+            .ok()
+            .and_then(|value| value.parse::<usize>().ok())
+            .ok_or_else(|| {
+                ResponseError::from(ResponseErrorKind::InvalidCompressionHeader {
+                    header: "x-log-bodyrawsize",
+                    reason: "value is not a non-negative integer".into(),
+                    request_id: request_id.clone(),
+                })
+            })?;
+        if raw_size > MAX_DECOMPRESSED_BODY_SIZE || raw_size > i32::MAX as usize {
+            return Err(ResponseErrorKind::DecompressedBodyTooLarge {
+                raw_size,
+                limit: MAX_DECOMPRESSED_BODY_SIZE.min(i32::MAX as usize),
+                request_id,
+            }
+            .into());
+        }
         if raw_size == 0 {
+            // SLS may return a non-empty compression sentinel for an empty
+            // result. Match the Go SDK and treat raw size zero as empty.
             return Ok(Vec::new());
         }
 
-        decompress(body.into(), &compress_type, raw_size as usize).map_err(|source| {
+        let decompressed = decompress(body, &compress_type, raw_size).map_err(|source| {
             let request_id = headers.get_str(LOG_REQUEST_ID);
-            ResponseErrorKind::Decompression {
+            ResponseError::from(ResponseErrorKind::Decompression {
                 source,
                 compress_type,
                 request_id,
+            })
+        })?;
+        if decompressed.len() != raw_size {
+            return Err(ResponseErrorKind::DecompressedSizeMismatch {
+                expected: raw_size,
+                actual: decompressed.len(),
+                request_id: headers.get_str(LOG_REQUEST_ID),
             }
-            .into()
-        })
+            .into());
+        }
+        Ok(decompressed)
     }
 }
 
 fn exponential_backoff(base_delay: Duration, retry_count: u32, max_delay: Duration) -> Duration {
-    let exp_delay = base_delay * 2u32.pow(retry_count);
+    let multiplier = 2u32.checked_pow(retry_count).unwrap_or(u32::MAX);
+    let exp_delay = base_delay.checked_mul(multiplier).unwrap_or(max_delay);
     std::cmp::min(exp_delay, max_delay)
 }
 
+fn full_jitter(max_delay: Duration) -> Duration {
+    if max_delay.is_zero() {
+        return max_delay;
+    }
+    let seed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .subsec_nanos() as u128;
+    let upper = max_delay.as_nanos().min(u64::MAX as u128);
+    let nanos = seed % (upper + 1);
+    Duration::from_nanos(nanos as u64)
+}
+
+fn parse_retry_after(headers: &HeaderMap) -> Option<Duration> {
+    let value = headers.get(http::header::RETRY_AFTER)?.to_str().ok()?;
+    if let Ok(seconds) = value.parse::<u64>() {
+        return Some(Duration::from_secs(seconds));
+    }
+    let deadline = httpdate::parse_http_date(value).ok()?;
+    deadline.duration_since(std::time::SystemTime::now()).ok()
+}
+
 const DEFAULT_POOL_IDLE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(55);
+const MAX_DECOMPRESSED_BODY_SIZE: usize = 512 * 1024 * 1024;
 
-pub type BoxFuture<T> =
-    ::std::pin::Pin<::std::boxed::Box<dyn ::std::future::Future<Output = T> + ::std::marker::Send>>;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        Config, Credentials, CredentialsFuture, CredentialsProvider, FromConfig, RetryPolicy,
+    };
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
 
-pub type ResponseResultBoxFuture<B> = BoxFuture<Result<Response<B>, Error>>;
+    fn client() -> Client {
+        Client::from_config(
+            Config::builder()
+                .endpoint("localhost")
+                .access_key("id", "secret")
+                .build()
+                .expect("valid test config"),
+        )
+        .expect("valid test client")
+    }
+
+    #[test]
+    fn compressed_response_requires_valid_raw_size() {
+        let client = client();
+        let mut headers = HeaderMap::new();
+        headers.insert(LOG_COMPRESS_TYPE, http::HeaderValue::from_static("lz4"));
+
+        assert!(client
+            .handle
+            .do_decompress(vec![1, 2, 3], &headers)
+            .is_err());
+
+        headers.insert(LOG_BODY_RAW_SIZE, http::HeaderValue::from_static("0"));
+        assert_eq!(
+            client
+                .handle
+                .do_decompress(vec![1], &headers)
+                .expect("SLS uses a non-empty sentinel for some empty responses"),
+            Vec::<u8>::new()
+        );
+    }
+
+    #[test]
+    fn retry_policy_distinguishes_reads_and_writes() {
+        let client = client();
+        let error = Error::HttpResponse {
+            http_status: 504,
+            request_id: None,
+            body: bytes::Bytes::new(),
+            retry_after: None,
+        };
+        assert!(client.handle.should_retry(&http::Method::GET, &error));
+        assert!(!client.handle.should_retry(&http::Method::POST, &error));
+
+        let error = Error::HttpResponse {
+            http_status: 502,
+            request_id: None,
+            body: bytes::Bytes::new(),
+            retry_after: None,
+        };
+        assert!(client.handle.should_retry(&http::Method::POST, &error));
+    }
+
+    struct CountingCredentials {
+        calls: Arc<AtomicUsize>,
+    }
+
+    impl CredentialsProvider for CountingCredentials {
+        fn credentials(&self) -> CredentialsFuture<'_> {
+            self.calls.fetch_add(1, Ordering::SeqCst);
+            Box::pin(async { Ok(Credentials::new("id", "secret", None)) })
+        }
+    }
+
+    #[tokio::test]
+    async fn malformed_503_is_retried_and_credentials_are_refreshed() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind test server");
+        let address = listener.local_addr().expect("test server address");
+        let server = tokio::spawn(async move {
+            for attempt in 0..2 {
+                let (mut stream, _) = listener.accept().await.expect("accept request");
+                let mut request = vec![0; 4096];
+                let _ = stream.read(&mut request).await.expect("read request");
+                let response = if attempt == 0 {
+                    "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 11\r\nConnection: close\r\n\r\nbad gateway"
+                } else {
+                    "HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                };
+                stream
+                    .write_all(response.as_bytes())
+                    .await
+                    .expect("write response");
+            }
+        });
+
+        let calls = Arc::new(AtomicUsize::new(0));
+        let config = Config::builder()
+            .endpoint(format!("http://{address}"))
+            .credentials_provider(CountingCredentials {
+                calls: Arc::clone(&calls),
+            })
+            .retry_policy(
+                RetryPolicy::new()
+                    .max_retries(1)
+                    .base_backoff(Duration::ZERO)
+                    .max_backoff(Duration::ZERO)
+                    .max_elapsed(Duration::from_secs(1))
+                    .jitter(false),
+            )
+            .build()
+            .expect("valid config");
+        let client = Client::from_config(config).expect("valid client");
+
+        client
+            .handle
+            .send_http(
+                http::Method::GET,
+                format!("http://{address}"),
+                "/",
+                None,
+                None,
+                HeaderMap::new(),
+            )
+            .await
+            .expect("second attempt succeeds");
+        server.await.expect("test server task");
+        assert_eq!(calls.load(Ordering::SeqCst), 2);
+    }
+}

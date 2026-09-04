@@ -65,11 +65,9 @@ pub struct ConsumerGroupHeartbeatRequestBuilder {
 
 impl ConsumerGroupHeartbeatRequestBuilder {
     #[must_use = "the result future must be awaited"]
-    pub fn send(self) -> ResponseResultBoxFuture<ConsumerGroupHeartbeatResponse> {
-        Box::pin(async move {
-            let (handle, request) = self.build()?;
-            handle.send(request).await
-        })
+    pub async fn send(self) -> crate::Result<Response<ConsumerGroupHeartbeatResponse>> {
+        let (handle, request) = self.build()?;
+        handle.send(request).await
     }
 
     /// Set the consumer identifier (required).

@@ -72,11 +72,9 @@ pub struct GetConsumerGroupCheckpointRequestBuilder {
 
 impl GetConsumerGroupCheckpointRequestBuilder {
     #[must_use = "the result future must be awaited"]
-    pub fn send(self) -> ResponseResultBoxFuture<GetConsumerGroupCheckpointResponse> {
-        Box::pin(async move {
-            let (handle, request) = self.build()?;
-            handle.send(request).await
-        })
+    pub async fn send(self) -> crate::Result<Response<GetConsumerGroupCheckpointResponse>> {
+        let (handle, request) = self.build()?;
+        handle.send(request).await
     }
 
     /// Set the shard ID to get the checkpoint for (optional).
@@ -123,7 +121,8 @@ impl Request for GetConsumerGroupCheckpointRequest {
     }
 
     fn query_params(&self) -> Option<Vec<(String, String)>> {
-        self.shard_id.map(|shard_id| vec![("shard".to_string(), shard_id.to_string())])
+        self.shard_id
+            .map(|shard_id| vec![("shard".to_string(), shard_id.to_string())])
     }
 }
 

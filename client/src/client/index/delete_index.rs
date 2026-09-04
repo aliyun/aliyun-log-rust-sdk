@@ -39,11 +39,9 @@ pub struct DeleteIndexRequestBuilder {
 
 impl DeleteIndexRequestBuilder {
     #[must_use = "the result future must be awaited"]
-    pub fn send(self) -> ResponseResultBoxFuture<()> {
-        Box::pin(async move {
-            let (handle, request) = self.build()?;
-            handle.send(request).await
-        })
+    pub async fn send(self) -> crate::Result<Response<()>> {
+        let (handle, request) = self.build()?;
+        handle.send(request).await
     }
 
     fn build(self) -> BuildResult<DeleteIndexRequest> {

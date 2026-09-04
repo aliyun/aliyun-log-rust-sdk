@@ -7,21 +7,20 @@ description = "A crate to calculate signature for HTTP request to Aliyun Log Ser
 license = "MIT"
 readme = "README.md"
 keywords = ["aliyun", "sls", "signature", "alibabacloud"]
-documentation = "https://docs.rs/aliyun-log-sdk-protobuf"
+documentation = "https://docs.rs/aliyun-log-sdk-sign"
 homepage = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/master/sign"
 repository = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/master/sign"
 autobenches = false
 
 [dependencies]
-base64 = "0.22.1"
-bytes = "1.10.1"
-chrono = "0.4.40"
+base64 = "0.23.1"
+chrono = "0.4.45"
 hmac-sha1 = "0.2.2"
-http = "1.3.1"
-log = "0.4.27"
-md5 = "0.7.0"
+http = "1.5.0"
+log = "0.4.34"
+md5 = "0.8.1"
 string-builder = "0.2.0"
-thiserror = "2.0.12"
+thiserror = "2.0.20"
 
 [dev-dependencies]
-env_logger = "0.11.8"
+env_logger = "0.11.11"

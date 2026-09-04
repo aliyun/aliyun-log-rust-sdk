@@ -130,12 +130,11 @@ pub fn sign_v1(
         if !k.starts_with("x-log-") && !k.starts_with("x-acs-") {
             continue;
         }
-        if let Ok(v) = v.to_str() {
-            builder.append(k);
-            builder.append(":");
-            builder.append(v);
-            builder.append("\n");
-        }
+        let v = v.to_str()?;
+        builder.append(k);
+        builder.append(":");
+        builder.append(v.trim());
+        builder.append("\n");
     }
 
     // url & params
@@ -157,7 +156,7 @@ pub fn sign_v1(
     let message = builder
         .string()
         .expect("fail to build message, invalid utf8");
-    trace!("signature message: {}", message);
+    trace!("calculated signature for method={method} path={path}");
 
     let signature = general_purpose::STANDARD.encode(hmac_sha1::hmac_sha1(
         access_key_secret.as_bytes(),
@@ -424,5 +423,28 @@ mod tests {
                 .to_str()
                 .unwrap()
         );
+    }
+
+    #[test]
+    fn invalid_signed_header_is_not_silently_ignored() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            HeaderName::from_static("x-log-custom"),
+            HeaderValue::from_bytes(&[0xff]).expect("opaque header bytes are allowed"),
+        );
+
+        let error = sign_v1(
+            "id",
+            "secret",
+            None,
+            Method::GET,
+            "/",
+            &mut headers,
+            QueryParams::empty(),
+            None,
+        )
+        .expect_err("non-UTF-8 signed headers must fail");
+
+        assert!(matches!(error, Error::ToStrError(_)));
     }
 }

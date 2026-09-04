@@ -1,6 +1,6 @@
 use crate::compress::CompressType;
 use crate::error::Result;
-use crate::{common::*, RequestError, RequestErrorKind};
+use crate::{RequestError, RequestErrorKind};
 use aliyun_log_sdk_protobuf::LogGroup;
 
 use super::*;
@@ -70,11 +70,9 @@ impl PutLogsRequestBuilder {
     }
 
     #[must_use = "the result future must be awaited"]
-    pub fn send(self) -> ResponseResultBoxFuture<PutLogsResponse> {
-        Box::pin(async move {
-            let (handle, request) = self.build()?;
-            handle.send(request).await
-        })
+    pub async fn send(self) -> crate::Result<Response<PutLogsResponse>> {
+        let (handle, request) = self.build()?;
+        handle.send(request).await
     }
 
     fn build(self) -> BuildResult<PutLogsRequest> {

@@ -53,11 +53,9 @@ pub struct ListShardsRequestBuilder {
 
 impl ListShardsRequestBuilder {
     #[must_use = "the result future must be awaited"]
-    pub fn send(self) -> ResponseResultBoxFuture<ListShardsResponse> {
-        Box::pin(async move {
-            let (handle, request) = self.build()?;
-            handle.send(request).await
-        })
+    pub async fn send(self) -> crate::Result<Response<ListShardsResponse>> {
+        let (handle, request) = self.build()?;
+        handle.send(request).await
     }
 
     fn build(self) -> BuildResult<ListShardsRequest> {

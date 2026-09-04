@@ -59,11 +59,9 @@ pub struct ListProjectsRequestBuilder {
 
 impl ListProjectsRequestBuilder {
     #[must_use = "the result future must be awaited"]
-    pub fn send(self) -> ResponseResultBoxFuture<ListProjectsResponse> {
-        Box::pin(async move {
-            let (handle, request) = self.build()?;
-            handle.send(request).await
-        })
+    pub async fn send(self) -> crate::Result<Response<ListProjectsResponse>> {
+        let (handle, request) = self.build()?;
+        handle.send(request).await
     }
 
     /// Filter projects by name (fuzzy search).

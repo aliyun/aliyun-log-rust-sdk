@@ -166,7 +166,7 @@ mod tests {
 
         let cg = consumer_groups
             .iter()
-            .find(|cg| cg.consumer_group_name() == &consumer_group_name)
+            .find(|cg| cg.consumer_group_name() == consumer_group_name)
             .expect("Created consumer group should be in the list");
 
         assert_eq!(cg.consumer_group_name(), &consumer_group_name);
@@ -176,7 +176,7 @@ mod tests {
 
         // Test 3: Update consumer group
         let _ = TEST_CLIENT
-            .update_consumer_group(project, logstore, &consumer_group_name)
+            .update_consumer_group(project, logstore, consumer_group_name)
             .timeout(60)
             .order(false)
             .send()
@@ -185,7 +185,7 @@ mod tests {
         println!("✓ Updated consumer group: {consumer_group_name}");
 
         // Verify update
-        let cg = find_consumer_group(&TEST_CLIENT, project, logstore, &consumer_group_name)
+        let cg = find_consumer_group(&TEST_CLIENT, project, logstore, consumer_group_name)
             .await
             .expect("Consumer group should exist after update");
 
@@ -195,7 +195,7 @@ mod tests {
 
         // Test 7: Delete consumer group
         let _ = TEST_CLIENT
-            .delete_consumer_group(project, logstore, &consumer_group_name)
+            .delete_consumer_group(project, logstore, consumer_group_name)
             .send()
             .await
             .unwrap();
@@ -211,7 +211,7 @@ mod tests {
         let consumer_groups = resp.get_body().consumer_groups();
         let still_exists = consumer_groups
             .iter()
-            .any(|cg| cg.consumer_group_name() == &consumer_group_name);
+            .any(|cg| cg.consumer_group_name() == consumer_group_name);
 
         assert!(!still_exists, "Consumer group should be deleted");
         println!("✓ Verified consumer group deletion");
@@ -262,7 +262,7 @@ mod tests {
 
         // Test 1: Missing timeout parameter
         let result = TEST_CLIENT
-            .create_consumer_group(project, logstore, &consumer_group_name)
+            .create_consumer_group(project, logstore, consumer_group_name)
             // .timeout(30) - intentionally not set
             .order(true)
             .send()
@@ -272,7 +272,7 @@ mod tests {
 
         // Test 2: Missing order parameter
         let result = TEST_CLIENT
-            .create_consumer_group(project, logstore, &consumer_group_name)
+            .create_consumer_group(project, logstore, consumer_group_name)
             .timeout(30)
             // .order(true) - intentionally not set
             .send()
@@ -282,7 +282,7 @@ mod tests {
 
         // Test 3: Both parameters missing (will fail on first missing param)
         let result = TEST_CLIENT
-            .create_consumer_group(project, logstore, &consumer_group_name)
+            .create_consumer_group(project, logstore, consumer_group_name)
             // .timeout(30) - intentionally not set
             // .order(true) - intentionally not set
             .send()
@@ -315,7 +315,7 @@ mod tests {
 
         // Test 1: Missing timeout parameter
         let result = TEST_CLIENT
-            .update_consumer_group(project, logstore, &consumer_group_name)
+            .update_consumer_group(project, logstore, consumer_group_name)
             // .timeout(60) - intentionally not set
             .order(false)
             .send()
@@ -325,7 +325,7 @@ mod tests {
 
         // Test 2: Missing order parameter
         let result = TEST_CLIENT
-            .update_consumer_group(project, logstore, &consumer_group_name)
+            .update_consumer_group(project, logstore, consumer_group_name)
             .timeout(60)
             // .order(false) - intentionally not set
             .send()
@@ -335,7 +335,7 @@ mod tests {
 
         // Clean up
         let _ = TEST_CLIENT
-            .delete_consumer_group(project, logstore, &consumer_group_name)
+            .delete_consumer_group(project, logstore, consumer_group_name)
             .send()
             .await;
     }
@@ -360,7 +360,7 @@ mod tests {
 
         // Test: Missing consumer parameter
         let result = TEST_CLIENT
-            .consumer_group_heartbeat(project, logstore, &consumer_group_name)
+            .consumer_group_heartbeat(project, logstore, consumer_group_name)
             // .consumer("test-consumer") - intentionally not set
             .send()
             .await;
@@ -369,7 +369,7 @@ mod tests {
 
         // Clean up
         let _ = TEST_CLIENT
-            .delete_consumer_group(project, logstore, &consumer_group_name)
+            .delete_consumer_group(project, logstore, consumer_group_name)
             .send()
             .await;
     }
@@ -394,7 +394,7 @@ mod tests {
 
         // Test 1: Missing shard_id parameter
         let result = TEST_CLIENT
-            .update_consumer_group_checkpoint(project, logstore, &consumer_group_name)
+            .update_consumer_group_checkpoint(project, logstore, consumer_group_name)
             // .shard_id(0) - intentionally not set
             .consumer_id("test-consumer")
             .checkpoint("test-cursor")
@@ -405,7 +405,7 @@ mod tests {
 
         // Test 2: Missing consumer_id parameter
         let result = TEST_CLIENT
-            .update_consumer_group_checkpoint(project, logstore, &consumer_group_name)
+            .update_consumer_group_checkpoint(project, logstore, consumer_group_name)
             .shard_id(0)
             // .consumer_id("test-consumer") - intentionally not set
             .checkpoint("test-cursor")
@@ -416,7 +416,7 @@ mod tests {
 
         // Test 3: Missing checkpoint parameter
         let result = TEST_CLIENT
-            .update_consumer_group_checkpoint(project, logstore, &consumer_group_name)
+            .update_consumer_group_checkpoint(project, logstore, consumer_group_name)
             .shard_id(0)
             .consumer_id("test-consumer")
             // .checkpoint("test-cursor") - intentionally not set
@@ -427,7 +427,7 @@ mod tests {
 
         // Clean up
         let _ = TEST_CLIENT
-            .delete_consumer_group(project, logstore, &consumer_group_name)
+            .delete_consumer_group(project, logstore, consumer_group_name)
             .send()
             .await;
     }
@@ -487,7 +487,7 @@ mod tests {
 
         // Test heartbeat
         let result = TEST_CLIENT
-            .consumer_group_heartbeat(project, logstore, &consumer_group_name)
+            .consumer_group_heartbeat(project, logstore, consumer_group_name)
             .consumer("test-consumer-1")
             .send()
             .await;
@@ -496,7 +496,7 @@ mod tests {
 
         // Clean up
         let _ = TEST_CLIENT
-            .delete_consumer_group(project, logstore, &consumer_group_name)
+            .delete_consumer_group(project, logstore, consumer_group_name)
             .send()
             .await;
     }
@@ -522,7 +522,7 @@ mod tests {
         // Get checkpoints - should be empty initially
         // We just verify we can get the response successfully
         TEST_CLIENT
-            .get_consumer_group_checkpoint(project, logstore, &consumer_group_name)
+            .get_consumer_group_checkpoint(project, logstore, consumer_group_name)
             .send()
             .await
             .expect("Failed to get checkpoints");
@@ -532,7 +532,7 @@ mod tests {
 
         // Clean up
         let _ = TEST_CLIENT
-            .delete_consumer_group(project, logstore, &consumer_group_name)
+            .delete_consumer_group(project, logstore, consumer_group_name)
             .send()
             .await;
     }

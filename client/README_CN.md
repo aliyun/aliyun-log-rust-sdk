@@ -21,6 +21,12 @@ let config = Config::builder()
 let client = Client::from_config(config)?;
 ```
 
+未指定 scheme 的 endpoint 默认使用 HTTPS。仅应在可信的本地开发环境中显式使用
+`http://`。TLS 默认使用 rustls，也可以按需启用 `native-tls` feature。
+
+长时间运行的应用可以实现 `CredentialsProvider`，在每次请求尝试前刷新 STS
+凭证；重试次数、退避和总时限可通过 `RetryPolicy` 配置。
+
 ### 2. 发送请求
 
 ```rust
@@ -38,3 +44,9 @@ let resp = client.get_logs("my-project", "my-logstore")
     .send()
     .await?;
 ```
+
+## Consumer Library
+
+使用 `consumer::ConsumerWorker` 可实现消费组协调、自动 shard 分配、处理失败重试、
+定时 checkpoint 提交和优雅停止。完整示例参见
+[`consumer` 模块文档](https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/consumer/)。

@@ -1,5 +1,5 @@
 use crate::error::Result;
-use crate::{common::*, RequestError};
+use crate::RequestError;
 
 use super::*;
 
@@ -32,11 +32,9 @@ pub struct PutLogsRawRequestBuilder {
 
 impl PutLogsRawRequestBuilder {
     #[must_use = "the result future must be awaited"]
-    pub fn send(self) -> ResponseResultBoxFuture<PutLogsRawResponse> {
-        Box::pin(async move {
-            let (handle, request) = self.build()?;
-            handle.send(request).await
-        })
+    pub async fn send(self) -> crate::Result<Response<PutLogsRawResponse>> {
+        let (handle, request) = self.build()?;
+        handle.send(request).await
     }
 
     #[doc(hidden)]

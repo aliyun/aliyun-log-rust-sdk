@@ -67,11 +67,9 @@ pub struct ListLogstoresRequestBuilder {
 
 impl ListLogstoresRequestBuilder {
     #[must_use = "the result future must be awaited"]
-    pub fn send(self) -> ResponseResultBoxFuture<ListLogstoresResponse> {
-        Box::pin(async move {
-            let (handle, request) = self.build()?;
-            handle.send(request).await
-        })
+    pub async fn send(self) -> crate::Result<Response<ListLogstoresResponse>> {
+        let (handle, request) = self.build()?;
+        handle.send(request).await
     }
 
     /// Filter logstores by name (fuzzy search).

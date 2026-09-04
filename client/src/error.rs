@@ -23,6 +23,10 @@ pub enum Error {
     #[error("Network error: {0}")]
     Network(#[from] reqwest::Error),
 
+    /// Fetching credentials from the configured provider failed.
+    #[error("Credentials provider error: {0}")]
+    CredentialsProvider(#[source] crate::CredentialsProviderError),
+
     /// The server returns an error response with error code and message.
     #[error("Server error: code={error_code}, message={error_message}, httpStatus={http_status}, requestId={request_id:?}")]
     Server {
@@ -30,6 +34,17 @@ pub enum Error {
         error_message: String,
         http_status: u32,
         request_id: Option<String>,
+        raw_body: bytes::Bytes,
+        retry_after: Option<std::time::Duration>,
+    },
+
+    /// The server returned an error response that was not a valid SLS JSON error.
+    #[error("HTTP error: httpStatus={http_status}, requestId={request_id:?}, body={body:?}")]
+    HttpResponse {
+        http_status: u32,
+        request_id: Option<String>,
+        body: bytes::Bytes,
+        retry_after: Option<std::time::Duration>,
     },
 
     #[error("Other error: {0}")]
@@ -134,6 +149,31 @@ pub(crate) enum ResponseErrorKind {
         source: aliyun_log_sdk_protobuf::Error,
         request_id: Option<String>,
     },
+
+    #[error("Invalid compression response header {header}: {reason}, request_id={request_id:?}")]
+    InvalidCompressionHeader {
+        header: &'static str,
+        reason: String,
+        request_id: Option<String>,
+    },
+
+    #[error(
+        "Decompressed response size does not match x-log-bodyrawsize: expected={expected}, actual={actual}, request_id={request_id:?}"
+    )]
+    DecompressedSizeMismatch {
+        expected: usize,
+        actual: usize,
+        request_id: Option<String>,
+    },
+
+    #[error(
+        "Decompressed response is too large: raw_size={raw_size}, limit={limit}, request_id={request_id:?}"
+    )]
+    DecompressedBodyTooLarge {
+        raw_size: usize,
+        limit: usize,
+        request_id: Option<String>,
+    },
 }
 
 pub(crate) type ResponseResult<T> = std::result::Result<T, ResponseError>;
@@ -142,22 +182,54 @@ impl Error {
     pub(crate) fn server_error(
         status: http::StatusCode,
         request_id: Option<String>,
-        body: &[u8],
+        body: bytes::Bytes,
+        retry_after: Option<std::time::Duration>,
     ) -> Self {
         let result: std::result::Result<ServerError, serde_json::Error> =
-            serde_json::from_slice(body);
+            serde_json::from_slice(&body);
         match result {
             Ok(server_error) => Error::Server {
                 error_code: server_error.error_code,
                 error_message: server_error.error_message,
                 http_status: status.as_u16() as u32,
                 request_id,
+                raw_body: body,
+                retry_after,
             },
-            Err(err) => ResponseError(ResponseErrorKind::JsonDecode {
-                source: err,
+            Err(_) => Error::HttpResponse {
+                http_status: status.as_u16() as u32,
                 request_id,
-            })
-            .into(),
+                body,
+                retry_after,
+            },
+        }
+    }
+
+    /// HTTP status returned by SLS, if the request reached the server.
+    pub fn http_status(&self) -> Option<u32> {
+        match self {
+            Self::Server { http_status, .. } | Self::HttpResponse { http_status, .. } => {
+                Some(*http_status)
+            }
+            _ => None,
+        }
+    }
+
+    /// Raw error response body returned by SLS.
+    pub fn response_body(&self) -> Option<&[u8]> {
+        match self {
+            Self::Server { raw_body, .. } => Some(raw_body),
+            Self::HttpResponse { body, .. } => Some(body),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn retry_after(&self) -> Option<std::time::Duration> {
+        match self {
+            Self::Server { retry_after, .. } | Self::HttpResponse { retry_after, .. } => {
+                *retry_after
+            }
+            _ => None,
         }
     }
 }
@@ -169,4 +241,34 @@ pub(crate) struct ServerError {
 
     #[serde(rename = "errorMessage")]
     error_message: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn malformed_server_error_keeps_status_and_body() {
+        let body = bytes::Bytes::from_static(b"<html>bad gateway</html>");
+        let error = Error::server_error(
+            http::StatusCode::BAD_GATEWAY,
+            Some("req-1".into()),
+            body.clone(),
+            None,
+        );
+
+        match error {
+            Error::HttpResponse {
+                http_status,
+                request_id,
+                body: actual,
+                retry_after: None,
+            } => {
+                assert_eq!(http_status, 502);
+                assert_eq!(request_id.as_deref(), Some("req-1"));
+                assert_eq!(actual, body);
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
 }
