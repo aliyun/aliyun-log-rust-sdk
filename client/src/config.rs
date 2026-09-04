@@ -1,7 +1,7 @@
-use crate::utils::is_empty_or_none;
-use crate::ConfigError;
-use lazy_static::lazy_static;
-use regex::Regex;
+use std::sync::Arc;
+use std::time::Duration;
+
+use crate::{ConfigError, Credentials, CredentialsProvider};
 
 /// Configuration for the Aliyun Log Service client.
 ///
@@ -22,14 +22,10 @@ use regex::Regex;
 #[derive(Clone)]
 pub struct Config {
     pub(crate) endpoint: Endpoint,
-    pub(crate) access_key_id: String,
-    pub(crate) access_key_secret: String,
-    pub(crate) security_token: Option<String>,
-    pub(crate) connection_timeout: std::time::Duration,
-    pub(crate) request_timeout: std::time::Duration,
-    pub(crate) max_retry: u32,
-    pub(crate) base_retry_backoff: std::time::Duration,
-    pub(crate) max_retry_backoff: std::time::Duration,
+    pub(crate) credentials_provider: Arc<dyn CredentialsProvider>,
+    pub(crate) connection_timeout: Duration,
+    pub(crate) request_timeout: Duration,
+    pub(crate) retry_policy: RetryPolicy,
 }
 
 impl Config {
@@ -62,8 +58,10 @@ pub struct ConfigBuilder {
     access_key_id: Option<String>,
     access_key_secret: Option<String>,
     security_token: Option<String>,
-    connection_timeout: Option<std::time::Duration>,
-    request_timeout: Option<std::time::Duration>,
+    credentials_provider: Option<Arc<dyn CredentialsProvider>>,
+    connection_timeout: Option<Duration>,
+    request_timeout: Option<Duration>,
+    retry_policy: Option<RetryPolicy>,
 }
 
 impl ConfigBuilder {
@@ -94,6 +92,8 @@ impl ConfigBuilder {
     ) -> Self {
         self.access_key_id = Some(access_key_id.into());
         self.access_key_secret = Some(access_key_secret.into());
+        self.security_token = None;
+        self.credentials_provider = None;
         self
     }
 
@@ -113,6 +113,16 @@ impl ConfigBuilder {
         self.access_key_id = Some(access_key_id.into());
         self.access_key_secret = Some(access_key_secret.into());
         self.security_token = Some(security_token.into());
+        self.credentials_provider = None;
+        self
+    }
+
+    /// Use a provider that can refresh credentials between request attempts.
+    pub fn credentials_provider(mut self, provider: impl CredentialsProvider) -> Self {
+        self.credentials_provider = Some(Arc::new(provider));
+        self.access_key_id = None;
+        self.access_key_secret = None;
+        self.security_token = None;
         self
     }
 
@@ -121,7 +131,7 @@ impl ConfigBuilder {
     /// # Arguments
     ///
     /// * `timeout` - The connection timeout duration
-    pub fn connection_timeout(mut self, connection_timeout: std::time::Duration) -> Self {
+    pub fn connection_timeout(mut self, connection_timeout: Duration) -> Self {
         self.connection_timeout = Some(connection_timeout);
         self
     }
@@ -131,40 +141,42 @@ impl ConfigBuilder {
     /// # Arguments
     ///
     /// * `timeout` - The request timeout duration
-    pub fn request_timeout(mut self, request_timeout: std::time::Duration) -> Self {
+    pub fn request_timeout(mut self, request_timeout: Duration) -> Self {
         self.request_timeout = Some(request_timeout);
+        self
+    }
+
+    /// Configure retry behavior.
+    pub fn retry_policy(mut self, retry_policy: RetryPolicy) -> Self {
+        self.retry_policy = Some(retry_policy);
         self
     }
 
     /// Build the client with the configured settings.
     pub fn build(self) -> Result<Config, ConfigError> {
         let endpoint = self.validate_endpoint()?;
-        self.validate_credentials()?;
+        let credentials_provider = self.build_credentials_provider()?;
 
         let connection_timeout = self
             .connection_timeout
             .unwrap_or(DEFAULT_CONNECTION_TIMEOUT);
 
         let request_timeout = self.request_timeout.unwrap_or(DEFAULT_REQUEST_TIMEOUT);
-        let security_token = if is_empty_or_none(&self.security_token) {
-            None
-        } else {
-            self.security_token
-        };
+        if connection_timeout.is_zero() || request_timeout.is_zero() {
+            return Err(ConfigError::InvalidClientConfig(anyhow::anyhow!(
+                "connection_timeout and request_timeout must be greater than zero"
+            )));
+        }
 
-        let access_key_id = self.access_key_id.unwrap();
-        let access_key_secret = self.access_key_secret.unwrap();
+        let retry_policy = self.retry_policy.unwrap_or_default();
+        retry_policy.validate()?;
 
         Ok(Config {
             endpoint,
-            access_key_id,
-            access_key_secret,
-            security_token,
+            credentials_provider,
             request_timeout,
             connection_timeout,
-            max_retry: DEFAULT_MAX_RETRY,
-            base_retry_backoff: DEFAULT_BASE_RETRY_BACKOFF,
-            max_retry_backoff: DEFAULT_MAX_RETRY_BACKOFF,
+            retry_policy,
         })
     }
 
@@ -174,36 +186,46 @@ impl ConfigBuilder {
             .as_ref()
             .ok_or_else(|| ConfigError::InvalidEndpoint("Endpoint not provided".to_string()))?;
 
-        if !ENDPOINT_REGEX.is_match(endpoint) {
-            return Err(ConfigError::InvalidEndpoint(endpoint.to_string()));
+        let endpoint = if endpoint.contains("://") {
+            endpoint.to_string()
+        } else {
+            format!("{DEFAULT_SCHEME}{endpoint}")
+        };
+        let parsed = url::Url::parse(&endpoint)
+            .map_err(|_| ConfigError::InvalidEndpoint(endpoint.clone()))?;
+        let scheme = match parsed.scheme() {
+            "http" => SCHEME_HTTP,
+            "https" => SCHEME_HTTPS,
+            _ => return Err(ConfigError::InvalidEndpoint(endpoint)),
+        };
+        if parsed.host().is_none()
+            || !parsed.username().is_empty()
+            || parsed.password().is_some()
+            || parsed.path() != "/"
+            || parsed.query().is_some()
+            || parsed.fragment().is_some()
+        {
+            return Err(ConfigError::InvalidEndpoint(endpoint));
         }
-
-        if let Some(stripped) = endpoint.strip_prefix(SCHEME_HTTPS) {
-            return Ok(Endpoint {
-                domain: stripped.to_string(),
-                scheme: SCHEME_HTTPS,
-            });
-        }
-
-        if let Some(stripped) = endpoint.strip_prefix(SCHEME_HTTP) {
-            return Ok(Endpoint {
-                domain: stripped.to_string(),
-                scheme: SCHEME_HTTP,
-            });
-        }
-
-        // No scheme in the input, use default
-        Ok(Endpoint {
-            domain: endpoint.to_string(),
-            scheme: DEFAULT_HTTP_SCHEME,
-        })
+        let domain = parsed[url::Position::BeforeHost..url::Position::AfterPort].to_string();
+        Ok(Endpoint { domain, scheme })
     }
 
-    fn validate_credentials(&self) -> Result<(), ConfigError> {
-        if is_empty_or_none(&self.access_key_id) || is_empty_or_none(&self.access_key_secret) {
+    fn build_credentials_provider(&self) -> Result<Arc<dyn CredentialsProvider>, ConfigError> {
+        if let Some(provider) = &self.credentials_provider {
+            return Ok(Arc::clone(provider));
+        }
+        let credentials = Credentials::new(
+            self.access_key_id.clone().unwrap_or_default(),
+            self.access_key_secret.clone().unwrap_or_default(),
+            self.security_token
+                .clone()
+                .filter(|value| !value.is_empty()),
+        );
+        if !credentials.validate() {
             return Err(ConfigError::InvalidAccessKey);
         }
-        Ok(())
+        Ok(Arc::new(credentials))
     }
 }
 
@@ -213,17 +235,102 @@ pub(crate) struct Endpoint {
     pub(crate) scheme: &'static str,
 }
 
-const DEFAULT_REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
-const DEFAULT_CONNECTION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
-const DEFAULT_MAX_RETRY: u32 = 3;
-const DEFAULT_BASE_RETRY_BACKOFF: std::time::Duration = std::time::Duration::from_millis(1000);
-const DEFAULT_MAX_RETRY_BACKOFF: std::time::Duration = std::time::Duration::from_secs(10);
-
-lazy_static! {
-    static ref ENDPOINT_REGEX: Regex =
-        Regex::new(r"^(https?://)?([a-zA-Z0-9.-]+)(:\d+)?$").expect("endpoint regex is invalid");
-}
+const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
+const DEFAULT_CONNECTION_TIMEOUT: Duration = Duration::from_secs(10);
 
 const SCHEME_HTTP: &str = "http://";
 const SCHEME_HTTPS: &str = "https://";
-const DEFAULT_HTTP_SCHEME: &str = "http://";
+const DEFAULT_SCHEME: &str = "https://";
+
+/// Retry behavior for SLS requests.
+#[derive(Clone, Debug)]
+pub struct RetryPolicy {
+    pub(crate) max_retries: u32,
+    pub(crate) base_backoff: Duration,
+    pub(crate) max_backoff: Duration,
+    pub(crate) max_elapsed: Duration,
+    pub(crate) jitter: bool,
+}
+
+impl RetryPolicy {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn max_retries(mut self, value: u32) -> Self {
+        self.max_retries = value;
+        self
+    }
+
+    pub fn base_backoff(mut self, value: Duration) -> Self {
+        self.base_backoff = value;
+        self
+    }
+
+    pub fn max_backoff(mut self, value: Duration) -> Self {
+        self.max_backoff = value;
+        self
+    }
+
+    pub fn max_elapsed(mut self, value: Duration) -> Self {
+        self.max_elapsed = value;
+        self
+    }
+
+    pub fn jitter(mut self, value: bool) -> Self {
+        self.jitter = value;
+        self
+    }
+
+    fn validate(&self) -> Result<(), ConfigError> {
+        if self.base_backoff > self.max_backoff {
+            return Err(ConfigError::InvalidClientConfig(anyhow::anyhow!(
+                "retry base_backoff must not exceed max_backoff"
+            )));
+        }
+        if self.max_retries > 0 && self.max_elapsed.is_zero() {
+            return Err(ConfigError::InvalidClientConfig(anyhow::anyhow!(
+                "retry max_elapsed must be greater than zero"
+            )));
+        }
+        Ok(())
+    }
+}
+
+impl Default for RetryPolicy {
+    fn default() -> Self {
+        Self {
+            max_retries: 3,
+            base_backoff: Duration::from_secs(1),
+            max_backoff: Duration::from_secs(10),
+            max_elapsed: Duration::from_secs(90),
+            jitter: true,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn endpoint_defaults_to_https() {
+        let config = Config::builder()
+            .endpoint("cn-hangzhou.log.aliyuncs.com")
+            .access_key("id", "secret")
+            .build()
+            .expect("valid config");
+        assert_eq!(config.endpoint.scheme, "https://");
+    }
+
+    #[test]
+    fn endpoint_rejects_paths_and_credentials() {
+        for endpoint in ["https://example.com/path", "https://user@example.com"] {
+            assert!(Config::builder()
+                .endpoint(endpoint)
+                .access_key("id", "secret")
+                .build()
+                .is_err());
+        }
+    }
+}

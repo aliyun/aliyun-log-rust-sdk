@@ -30,6 +30,9 @@ let config = Config::builder()
 let client = Client::from_config(config)?;
 ```
 
+未指定 scheme 的 endpoint 默认使用 HTTPS。对于需要自动刷新的 STS 凭证和自定义
+重试策略，可分别使用 `CredentialsProvider` 与 `RetryPolicy`。
+
 ### 3. 写入日志
 
 ```rust
@@ -64,6 +67,38 @@ let resp = client.get_logs("my-project", "my-logstore")
     .lines(100)
     .send()
     .await?;
+```
+
+### 5. 消费 Logstore
+
+`ConsumerWorker` 通过 SLS 消费组协调 shard 分配，为每个已分配 shard
+启动独立异步任务，并在优雅停止时提交尚未写入服务端的 checkpoint。
+
+```rust
+use aliyun_log_rust_sdk::consumer::{
+    ConsumerConfig, ConsumerWorker, CursorPosition, ProcessFn, ProcessOutcome,
+};
+
+let consumer_config = ConsumerConfig::new(
+    "my-project",
+    "my-logstore",
+    "my-consumer-group",
+    "consumer-1",
+)
+.cursor_position(CursorPosition::Begin);
+
+let processor = ProcessFn::new(|shard, log_groups, checkpoint| async move {
+    println!("shard {shard}: {} 个日志组", log_groups.len());
+    // 业务处理成功后标记 checkpoint；false 表示等待定时批量提交。
+    checkpoint.save_checkpoint(false).await?;
+    Ok::<_, aliyun_log_rust_sdk::consumer::Error>(ProcessOutcome::Continue)
+});
+
+let mut worker = ConsumerWorker::new(client, consumer_config, processor)?;
+worker.start().await?;
+
+// 收到 SIGTERM/Ctrl-C 后调用。
+worker.stop_and_wait().await?;
 ```
 
 ## 贡献

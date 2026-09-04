@@ -159,8 +159,8 @@ mod tests {
             "Full-text index should exist"
         );
         let line = retrieved_index.line.as_ref().unwrap();
-        assert_eq!(line.case_sensitive, false);
-        assert_eq!(line.chn, true);
+        assert!(!line.case_sensitive);
+        assert!(line.chn);
 
         // Verify field indexes
         assert!(retrieved_index.keys.is_some(), "Field indexes should exist");

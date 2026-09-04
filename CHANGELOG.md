@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Coordinated consumer worker with checkpoint resume and bounded shutdown.
+- Refreshable `CredentialsProvider` and configurable `RetryPolicy`.
+- rustls/native-tls feature selection and deterministic local HTTP regression tests.
+
+### Fixed
+
+- Deserialize camelCase GetLogs V3 metadata correctly.
+- Preserve status and raw bodies for malformed server errors and retry eligible responses.
+- Reject missing, invalid, mismatched, or oversized compressed-response metadata.
+- Prevent stale consumer batch handles from advancing newer checkpoints.
+- Re-sign every retry attempt and avoid ambiguous network retries for write operations.
+- Avoid logging STS tokens as part of signature trace messages.
+
+### Changed
+
+- Endpoints without a scheme now default to HTTPS.
+- Request-builder `send` methods no longer allocate boxed futures.
+
 ## [0.3.0]
 
 ### Added

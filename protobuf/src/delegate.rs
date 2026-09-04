@@ -68,8 +68,8 @@ impl<'a> From<internal::LogGroupList<'a>> for LogGroupList {
 impl<'a> From<&'a LogGroup> for internal::LogGroup<'a> {
     fn from(log_group: &'a LogGroup) -> Self {
         let mut res = Self {
-            topic: log_group.topic.clone().map(Cow::Owned),
-            source: log_group.source.clone().map(Cow::Owned),
+            topic: log_group.topic.as_deref().map(Cow::Borrowed),
+            source: log_group.source.as_deref().map(Cow::Borrowed),
             ..Default::default()
         };
 

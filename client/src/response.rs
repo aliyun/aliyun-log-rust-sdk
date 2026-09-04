@@ -19,7 +19,15 @@ where
         self.headers.get_str(LOG_REQUEST_ID)
     }
 
+    pub fn request_id(&self) -> Option<String> {
+        self.get_request_id()
+    }
+
     pub fn get_headers(&self) -> &http::HeaderMap {
+        &self.headers
+    }
+
+    pub fn headers(&self) -> &http::HeaderMap {
         &self.headers
     }
 
@@ -27,12 +35,24 @@ where
         &self.body
     }
 
+    pub fn body(&self) -> &B {
+        &self.body
+    }
+
     pub fn take_body(self) -> B {
+        self.body
+    }
+
+    pub fn into_body(self) -> B {
         self.body
     }
 
     pub fn get_http_status(&self) -> &http::StatusCode {
         &self.status
+    }
+
+    pub fn http_status(&self) -> http::StatusCode {
+        self.status
     }
 }
 

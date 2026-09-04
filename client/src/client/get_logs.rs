@@ -172,11 +172,9 @@ pub struct GetLogsRequestBuilder {
 
 impl GetLogsRequestBuilder {
     #[must_use = "the result future must be awaited"]
-    pub fn send(self) -> ResponseResultBoxFuture<GetLogsResponse> {
-        Box::pin(async move {
-            let (handle, request) = self.build()?;
-            handle.send(request).await
-        })
+    pub async fn send(self) -> crate::Result<Response<GetLogsResponse>> {
+        let (handle, request) = self.build()?;
+        handle.send(request).await
     }
     /// Required, the start time of the query, in unix timestamp, in seconds, e.g., 1609459200.
     pub fn from(mut self, from: i64) -> Self {
@@ -292,6 +290,10 @@ impl GetLogsResponse {
     pub fn logs(&self) -> &Vec<HashMap<String, String>> {
         &self.logs
     }
+    /// Returns the queried logs as a slice.
+    pub fn log_slice(&self) -> &[HashMap<String, String>] {
+        &self.logs
+    }
     /// Returns the queried logs as mutable.
     pub fn logs_mut(&mut self) -> &mut Vec<HashMap<String, String>> {
         &mut self.logs
@@ -310,7 +312,7 @@ impl FromHttpResponse for GetLogsResponse {
 pub mod get_logs_models {
     use super::*;
     #[derive(Debug, Deserialize, Default, Getters)]
-    #[serde(rename_all = "snake_case", default = "GetLogsMeta::default")]
+    #[serde(rename_all = "camelCase", default)]
     #[allow(dead_code)]
     #[getset(get = "pub")]
     pub struct GetLogsMeta {
@@ -326,6 +328,7 @@ pub mod get_logs_models {
         limited: Option<i64>,
         count: Option<i64>,
         processed_bytes: Option<i64>,
+        #[serde(rename = "telementryType")]
         telementry_type: Option<String>,
         power_sql: Option<bool>,
         #[serde(rename = "insertedSQL")]
@@ -351,6 +354,7 @@ pub mod get_logs_models {
     }
 
     #[derive(Debug, Deserialize, Getters)]
+    #[serde(rename_all = "camelCase")]
     #[allow(dead_code)]
     #[getset(get = "pub")]
     pub struct PhraseQueryInfoV3 {
@@ -358,5 +362,51 @@ pub mod get_logs_models {
         begin_offset: Option<i64>,
         end_offset: Option<i64>,
         end_time: Option<i64>,
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn deserialize_camel_case_metadata() {
+            let meta: GetLogsMeta = serde_json::from_str(
+                r#"{
+                    "progress":"Complete",
+                    "aggQuery":"count(*)",
+                    "whereQuery":"level:error",
+                    "hasSQL":true,
+                    "processedRows":42,
+                    "elapsedMillisecond":7,
+                    "cpuSec":0.5,
+                    "cpuCores":2.0,
+                    "processedBytes":128,
+                    "telementryType":"logs",
+                    "powerSql":true,
+                    "insertedSQL":"select count(*)",
+                    "phraseQueryInfo":{
+                        "scanAll":false,
+                        "beginOffset":1,
+                        "endOffset":2,
+                        "endTime":3
+                    },
+                    "scanBytes":64,
+                    "isAccurate":true,
+                    "columnTypes":["long"]
+                }"#,
+            )
+            .expect("metadata should deserialize");
+
+            assert_eq!(meta.agg_query(), &Some("count(*)".to_string()));
+            assert_eq!(meta.processed_rows(), &Some(42));
+            assert_eq!(meta.telementry_type(), &Some("logs".to_string()));
+            assert_eq!(meta.scan_bytes(), &Some(64));
+            let phrase = meta
+                .phrase_query_info()
+                .as_ref()
+                .expect("phrase query metadata should be present");
+            assert_eq!(phrase.scan_all(), &Some(false));
+            assert_eq!(phrase.begin_offset(), &Some(1));
+        }
     }
 }

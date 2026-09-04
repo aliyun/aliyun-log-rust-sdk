@@ -16,14 +16,9 @@ getset = "0.1.5"
 quick-protobuf = "0.8.1"
 thiserror = "2.0.12"
 
-[build-dependencies]
-prost-build = "0.13.5"
-
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 prost = "0.13.5"
-prost-build = "0.13.5"
-protoc-bin-vendored = "3.1.0"
 
 [[bench]]
 name = "proto"

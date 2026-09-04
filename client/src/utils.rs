@@ -38,11 +38,6 @@ pub(crate) fn user_agent() -> String {
     format!("aliyun-log-rust-sdk/{VERSION}")
 }
 
-/// Check if an Option<String> is None or contains an empty string
-pub(crate) fn is_empty_or_none(option: &Option<String>) -> bool {
-    option.as_ref().is_none_or(String::is_empty)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -80,8 +80,8 @@ Logstore 管理
 消费相关
 ~~~~~~~~~~
 
+* `consumer 模块 <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/consumer/index.html>`_ - 提供 shard 协调分配、失败重试、checkpoint 管理与优雅停止的高层消费组件
 * `consumer_group_heartbeat <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.consumer_group_heartbeat>`_ - 发送心跳以维持分片所有权并获取分配的分片
 * `get_consumer_group_checkpoint <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.get_consumer_group_checkpoint>`_ - 获取消费位点，即分片的消费进度
 * `update_consumer_group_checkpoint <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.update_consumer_group_checkpoint>`_ - 更新消费位点
-
 

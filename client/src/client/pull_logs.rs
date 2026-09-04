@@ -123,11 +123,9 @@ pub struct PullLogsRequestBuilder {
 
 impl PullLogsRequestBuilder {
     #[must_use = "the result future must be awaited"]
-    pub fn send(self) -> ResponseResultBoxFuture<PullLogsResponse> {
-        Box::pin(async move {
-            let (handle, request) = self.build()?;
-            handle.send(request).await
-        })
+    pub async fn send(self) -> crate::Result<Response<PullLogsResponse>> {
+        let (handle, request) = self.build()?;
+        handle.send(request).await
     }
 
     /// Required, the cursor to start pulling logs from, inclusive.

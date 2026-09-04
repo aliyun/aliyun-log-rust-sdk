@@ -20,6 +20,14 @@ let config = Config::builder()
 let client = Client::from_config(config)?;
 ```
 
+Endpoints without a scheme use HTTPS. Use an explicit `http://` endpoint only
+for trusted local development. TLS defaults to rustls; enable the `native-tls`
+feature if required.
+
+Long-running applications can implement `CredentialsProvider` to refresh STS
+credentials before every request attempt. Retry timing can be configured with
+`RetryPolicy`.
+
 2. Send a request
 
 ```rust
@@ -36,3 +44,10 @@ let resp = client.get_logs("my-project", "my-logstore")
     .send()
     .await?;
 ```
+
+## Consumer Library
+
+Use `consumer::ConsumerWorker` for coordinated consumption with automatic shard
+assignment, processing retries, periodic checkpoint commits, and graceful
+shutdown. See the [`consumer` module documentation](https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/consumer/)
+for a complete example.

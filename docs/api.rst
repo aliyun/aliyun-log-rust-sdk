@@ -79,7 +79,7 @@ Consumer Group
 Consumption
 ~~~~~~~~~~~
 
+* `consumer module <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/consumer/index.html>`_ - High-level coordinated consumer with shard workers, retries, checkpoints, and graceful shutdown
 * `consumer_group_heartbeat <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.consumer_group_heartbeat>`_ - Send heartbeat to maintain shard ownership and get assigned shards
 * `get_consumer_group_checkpoint <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.get_consumer_group_checkpoint>`_ - Get consumption checkpoint to track shard consumption progress
 * `update_consumer_group_checkpoint <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.update_consumer_group_checkpoint>`_ - Update consumption checkpoint
-
