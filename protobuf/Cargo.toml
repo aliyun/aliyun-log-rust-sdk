@@ -12,13 +12,13 @@ repository = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/master/protobuf
 autobenches = false
 
 [dependencies]
-getset = "0.1.5"
+getset = "0.1.7"
 quick-protobuf = "0.8.1"
-thiserror = "2.0.12"
+thiserror = "2.0.20"
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
-prost = "0.13.5"
+criterion = { version = "0.8.2", features = ["html_reports"] }
+prost = "0.14.4"
 
 [[bench]]
 name = "proto"
