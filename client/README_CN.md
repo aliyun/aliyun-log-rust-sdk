@@ -34,7 +34,7 @@ let resp = client.get_logs("my-project", "my-logstore")
     .to(now)                    // 结束时间（必需）
     .query("level:ERROR")       // 查询语句，遵循查询语法
     .offset(0)                  // 从第一条日志开始
-    .lines(100)                 // 返回最多 100 条日志
+    .line(100)                  // 返回最多 100 条日志
     .send()
     .await?;
 ```

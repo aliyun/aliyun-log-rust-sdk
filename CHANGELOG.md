@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2]
+
+### Fixed
+
+- Serialize the GetLogs limit as `line` so the service respects the requested number of logs for non-SQL queries (#13).
+- Preserve `.lines()` as a compatible alias for `.line()`, and update README examples and pagination documentation.
+
 ## [0.3.0]
 
 ### Added

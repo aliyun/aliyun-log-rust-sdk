@@ -61,7 +61,7 @@ let resp = client.get_logs("my-project", "my-logstore")
     .to(now)
     .query("level:ERROR")
     .offset(0)
-    .lines(100)
+    .line(100)
     .send()
     .await?;
 ```
