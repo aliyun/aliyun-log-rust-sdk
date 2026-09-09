@@ -66,6 +66,12 @@ let resp = client.get_logs("my-project", "my-logstore")
     .await?;
 ```
 
+## Credentials
+
+Use ECS RAM Role, environment variables, static credentials, or a custom credentials
+source. See the [dynamic credentials guide](client/docs/credentials.md)
+for available providers, prerequisites, and examples.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.

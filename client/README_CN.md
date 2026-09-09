@@ -38,3 +38,8 @@ let resp = client.get_logs("my-project", "my-logstore")
     .send()
     .await?;
 ```
+
+## 凭证配置
+
+请参见[动态凭证指南](docs/credentials_cn.md)，了解 ECS RAM Role 的前提条件、
+环境变量凭证、provider 便捷创建函数和自定义凭证接入方式。

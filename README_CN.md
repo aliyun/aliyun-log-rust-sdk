@@ -66,6 +66,11 @@ let resp = client.get_logs("my-project", "my-logstore")
     .await?;
 ```
 
+## 凭证配置
+
+支持 ECS RAM Role、环境变量、静态凭证和自定义凭证来源。可用 provider、
+前提条件和使用示例请参见[动态凭证指南](client/docs/credentials_cn.md)。
+
 ## 贡献
 
 欢迎贡献！请随时提交 Pull Request。

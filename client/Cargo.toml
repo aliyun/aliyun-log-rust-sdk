@@ -1,6 +1,6 @@
 [package]
 name = "aliyun-log-rust-sdk"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 authors = ["Aliyun Log Service"]
 homepage = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/master/client"
@@ -29,14 +29,17 @@ tokio = { version = "1.44.2", features = ["rt", "time"] }
 log = "0.4.27"
 futures-executor = { version = "0.3.31" }
 bytes = "1.10.1"
+arc-swap = "1.9.2"
+async-trait = "0.1"
+fastrand = "2"
+chrono = "0.4.40"
 
 [lib]
 
 [dev-dependencies]
-chrono = "0.4.40"
 dotenv = "0.15.0"
 env_logger = "0.11.8"
 envy = "0.4.2"
 log = "0.4.27"
-tokio = { version = "1.44.2", features = ["full"] }
+tokio = { version = "1.44.2", features = ["full", "test-util"] }
 tokio-test = "0.4.4"

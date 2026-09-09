@@ -5,6 +5,10 @@ pub type Result<T, E = crate::Error> = std::result::Result<T, E>;
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum Error {
+    /// Credentials could not be fetched and no previously fetched credentials exist.
+    #[error("Credentials error: {0}")]
+    Credentials(#[from] crate::CredentialsError),
+
     /// This error is caused by invalid configuration for the client, such as invalid endpoint, invalid access key, etc.
     #[error("Config error: {0}")]
     InvalidConfig(#[from] ConfigError),
