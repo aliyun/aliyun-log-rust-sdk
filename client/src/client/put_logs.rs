@@ -1,6 +1,6 @@
 use crate::compress::CompressType;
 use crate::error::Result;
-use crate::{common::*, RequestError, RequestErrorKind};
+use crate::{RequestError, RequestErrorKind};
 use aliyun_log_sdk_protobuf::LogGroup;
 
 use super::*;
