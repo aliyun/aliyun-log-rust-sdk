@@ -82,6 +82,26 @@ pub use put_logs_raw::*;
 /// # }
 /// ```
 ///
+/// Use a credentials provider for automatically refreshed ECS role credentials:
+///
+/// ```
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// use aliyun_log_rust_sdk::{ecs_ram_role_credentials_provider, Client, Config, FromConfig};
+///
+/// let config = Config::builder()
+///     .endpoint("cn-hangzhou.log.aliyuncs.com")
+///     .credentials_provider(ecs_ram_role_credentials_provider("my-ecs-role")?)
+///     .build()?;
+/// let client = Client::from_config(config)?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// The role must be attached to the ECS instance, have the required SLS permissions,
+/// and support normal metadata access. See [`crate::ecs_ram_role_credentials_provider`]
+/// for prerequisites. [`crate::static_credentials_provider`] creates fixed providers;
+/// implement [`crate::CredentialsProvider`] to use your own credentials source.
+///
 /// For more configuration options, see [`ConfigBuilder`](crate::config::ConfigBuilder).
 pub struct Client {
     handle: HandleRef,

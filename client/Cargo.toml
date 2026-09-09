@@ -32,11 +32,11 @@ bytes = "1.10.1"
 arc-swap = "1.9.2"
 async-trait = "0.1"
 fastrand = "2"
+chrono = "0.4.40"
 
 [lib]
 
 [dev-dependencies]
-chrono = "0.4.40"
 dotenv = "0.15.0"
 env_logger = "0.11.8"
 envy = "0.4.2"

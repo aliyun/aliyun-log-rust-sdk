@@ -119,15 +119,41 @@ impl ConfigBuilder {
         self
     }
 
-    /// Use a custom asynchronous credentials provider.
+    /// Use a built-in or custom credentials provider for authentication.
     ///
-    /// Fetching is lazy. The SDK caches credentials, refreshes them before expiration,
-    /// and falls back to old credentials (even expired ones) on fetch failure.
-    /// Concurrent fetches are allowed. Each fetch round has at most three attempts;
-    /// an exhausted round suppresses new rounds for 15 seconds.
+    /// Use [`crate::ecs_ram_role_credentials_provider`] for ECS role credentials,
+    /// [`crate::environment_credentials_provider`] for environment variables, or
+    /// [`crate::static_credentials_provider`] for fixed credentials. Custom providers
+    /// implement [`CredentialsProvider`]. The client calls the provider when sending
+    /// a request; constructing the configuration does not call it. Environment
+    /// providers read and validate their values when the provider itself is created.
     ///
-    /// Cannot be combined with [`Self::access_key`] or [`Self::sts`]. Clones of the
-    /// built [`Config`] share the cache, including its failure cooldown.
+    /// The SDK manages refreshes and falls back to previous credentials, even
+    /// expired ones, if fetching fails. With no credentials available, requests
+    /// return [`crate::Error::Credentials`].
+    ///
+    /// # Arguments
+    ///
+    /// * `provider` - A provider or shared handle such as `Arc<dyn CredentialsProvider>`.
+    ///
+    /// # Errors
+    ///
+    /// [`Self::build`] rejects configurations combining a provider with
+    /// [`Self::access_key`] or [`Self::sts`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use aliyun_log_rust_sdk::{ecs_ram_role_credentials_provider, Config};
+    ///
+    /// let config = Config::builder()
+    ///     .endpoint("cn-hangzhou.log.aliyuncs.com")
+    ///     .credentials_provider(ecs_ram_role_credentials_provider("my-ecs-role")?)
+    ///     .build()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn credentials_provider(mut self, provider: impl CredentialsProvider) -> Self {
         self.credentials_provider = Some(SharedCredentialsProvider::new(provider));
         self
@@ -135,9 +161,33 @@ impl ConfigBuilder {
 
     /// Set the timeout for each credentials fetch attempt (default: 5 seconds).
     ///
-    /// Must be nonzero. Independent of the SLS HTTP request timeout; a fetch round
-    /// takes at most three such timeouts plus 300ms of retry delays, provided the
-    /// provider yields to the async runtime. Cancellation drops the provider future.
+    /// Independent of [`Self::request_timeout`], which applies to the SLS HTTP
+    /// request. Providers must use nonblocking, cancellation-safe async I/O.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - Maximum duration of each credentials fetch attempt, not the
+    ///   total duration of a request including retries. Must be nonzero.
+    ///
+    /// # Errors
+    ///
+    /// [`Self::build`] returns a configuration error for a zero timeout.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use aliyun_log_rust_sdk::{ecs_ram_role_credentials_provider, Config};
+    /// use std::time::Duration;
+    ///
+    /// let config = Config::builder()
+    ///     .endpoint("cn-hangzhou.log.aliyuncs.com")
+    ///     .credentials_provider(ecs_ram_role_credentials_provider("my-ecs-role")?)
+    ///     .credentials_fetch_timeout(Duration::from_secs(3))
+    ///     .build()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn credentials_fetch_timeout(mut self, timeout: std::time::Duration) -> Self {
         self.credentials_fetch_timeout = Some(timeout);
         self

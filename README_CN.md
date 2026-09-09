@@ -66,73 +66,10 @@ let resp = client.get_logs("my-project", "my-logstore")
     .await?;
 ```
 
-## 静态凭证 Provider
+## 凭证配置
 
-使用 `static_credentials_provider` 配置固定凭证，也可以继续使用原有的
-`.access_key()`、`.sts()` 接口。
-
-```rust
-use aliyun_log_rust_sdk::{static_credentials_provider, Config};
-
-let provider = static_credentials_provider("access_key_id", "access_key_secret", None)?;
-// STS 凭证将 None 换成 Some("sts_token".to_string())。
-let config = Config::builder()
-    .endpoint("cn-hangzhou.log.aliyuncs.com")
-    .credentials_provider(provider)
-    .build()?;
-```
-
-Helper 会校验 AK，创建不含过期时间的凭证。如果已有 `Credentials`，可通过
-`StaticCredentialsProvider::new(credentials)` 保留其过期时间和更新时间。
-静态 provider 不会自动续期临时凭证。
-
-## 动态凭证
-
-实现 `CredentialsProvider` 即可接入自定义异步凭证来源。SDK 已导出 `async_trait`，
-无需另行添加宏依赖。
-
-```rust
-use aliyun_log_rust_sdk::{
-    async_trait, Client, Config, Credentials, CredentialsError, CredentialsProvider, FromConfig,
-};
-use std::time::{Duration, SystemTime};
-
-struct MyProvider;
-
-#[async_trait]
-impl CredentialsProvider for MyProvider {
-    async fn fetch_credentials(&self) -> Result<Credentials, CredentialsError> {
-        // 替换为你的异步凭证获取调用。
-        // 自定义错误可通过 .map_err(CredentialsError::provider)? 转换。
-        Ok(Credentials::new("access_key_id", "access_key_secret")?
-            .with_security_token("sts_token") // 可选
-            .with_expiration(SystemTime::now() + Duration::from_secs(3600)) // 可选
-            .with_update_time(SystemTime::now())) // 可选元数据
-    }
-}
-
-let config = Config::builder()
-    .endpoint("cn-hangzhou.log.aliyuncs.com")
-    .credentials_provider(MyProvider)
-    .credentials_fetch_timeout(Duration::from_secs(5)) // 默认值，每次尝试的超时
-    .build()?;
-let client = Client::from_config(config)?;
-```
-
-AK ID 和 Secret 必填且不能为空。STS Token、过期时间和更新时间均可选。
-缺失 `expiration` 表示凭证无限期有效；`update_time` 仅作为元数据。
-Provider 应返回尚未过期的凭证。
-
-SDK 自动管理凭证刷新。获取失败时，请求会使用之前取得的凭证，**即使它已过期**；
-没有可用凭证时返回 `Error::Credentials`。
-
-Provider 必须支持并发调用，并使用支持取消的异步 I/O。可通过
-`.credentials_fetch_timeout()` 配置每次获取的超时（默认 5 秒，必须为非零时长），
-与 SLS HTTP 请求超时分别设置。
-
-支持传入 `Arc<MyProvider>`、`Arc<dyn CredentialsProvider>`，也提供可克隆的
-`SharedCredentialsProvider`。`.credentials_provider()` 不能与 `.access_key()`
-或 `.sts()` 混用。
+支持 ECS RAM Role、环境变量、静态凭证和自定义凭证来源。可用 provider、
+前提条件和使用示例请参见[动态凭证指南](client/docs/credentials_cn.md)。
 
 ## 贡献
 
