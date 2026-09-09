@@ -66,6 +66,76 @@ let resp = client.get_logs("my-project", "my-logstore")
     .await?;
 ```
 
+## Static Credentials Provider
+
+Use `static_credentials_provider` to configure a fixed set of credentials.
+The existing `.access_key()` and `.sts()` methods remain supported.
+
+```rust
+use aliyun_log_rust_sdk::{static_credentials_provider, Config};
+
+let provider = static_credentials_provider("access_key_id", "access_key_secret", None)?;
+// For STS credentials, use Some("sts_token".to_string()) instead of None.
+let config = Config::builder()
+    .endpoint("cn-hangzhou.log.aliyuncs.com")
+    .credentials_provider(provider)
+    .build()?;
+```
+
+The helper validates the keys and creates nonexpiring credentials. To wrap an existing
+`Credentials` value with optional expiration/update time, use
+`StaticCredentialsProvider::new(credentials)`. A static provider cannot renew
+temporary credentials when they expire.
+
+## Dynamic Credentials
+
+Implement `CredentialsProvider` to fetch credentials from your own asynchronous
+source. The SDK re-exports `async_trait`, so no separate macro dependency is needed.
+
+```rust
+use aliyun_log_rust_sdk::{
+    async_trait, Client, Config, Credentials, CredentialsError, CredentialsProvider, FromConfig,
+};
+use std::time::{Duration, SystemTime};
+
+struct MyProvider;
+
+#[async_trait]
+impl CredentialsProvider for MyProvider {
+    async fn fetch_credentials(&self) -> Result<Credentials, CredentialsError> {
+        // Replace with your asynchronous credentials-source call.
+        // Convert its errors with .map_err(CredentialsError::provider)?;
+        Ok(Credentials::new("access_key_id", "access_key_secret")?
+            .with_security_token("sts_token") // optional
+            .with_expiration(SystemTime::now() + Duration::from_secs(3600)) // optional
+            .with_update_time(SystemTime::now())) // optional metadata
+    }
+}
+
+let config = Config::builder()
+    .endpoint("cn-hangzhou.log.aliyuncs.com")
+    .credentials_provider(MyProvider)
+    .credentials_fetch_timeout(Duration::from_secs(5)) // default, per attempt
+    .build()?;
+let client = Client::from_config(config)?;
+```
+
+Both access keys must be nonempty. The STS token, expiration, and update time are
+optional. Missing expiration means the credentials do not expire; update time is
+metadata only. Return unexpired credentials from your provider.
+
+The SDK manages credential refreshes automatically. If fetching fails, requests use
+previously obtained credentials, **even if expired**. If none are available, the
+request returns `Error::Credentials`.
+
+Providers must support concurrent calls and cancellation-safe async I/O. Configure
+the timeout for each fetch attempt with `.credentials_fetch_timeout()` (default:
+5 seconds, must be nonzero), independently of the SLS HTTP request timeout.
+
+`Arc<MyProvider>`, `Arc<dyn CredentialsProvider>`, and the clonable
+`SharedCredentialsProvider` are accepted. Do not combine `.credentials_provider()`
+with `.access_key()` or `.sts()`.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.

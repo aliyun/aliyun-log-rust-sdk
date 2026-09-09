@@ -29,6 +29,9 @@ tokio = { version = "1.44.2", features = ["rt", "time"] }
 log = "0.4.27"
 futures-executor = { version = "0.3.31" }
 bytes = "1.10.1"
+arc-swap = "1.9.2"
+async-trait = "0.1"
+fastrand = "2"
 
 [lib]
 
@@ -38,5 +41,5 @@ dotenv = "0.15.0"
 env_logger = "0.11.8"
 envy = "0.4.2"
 log = "0.4.27"
-tokio = { version = "1.44.2", features = ["full"] }
+tokio = { version = "1.44.2", features = ["full", "test-util"] }
 tokio-test = "0.4.4"

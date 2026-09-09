@@ -1,7 +1,10 @@
+use crate::credentials::{CredentialsCache, DEFAULT_FETCH_TIMEOUT};
 use crate::utils::is_empty_or_none;
 use crate::ConfigError;
+use crate::{static_credentials_provider, CredentialsProvider, SharedCredentialsProvider};
 use lazy_static::lazy_static;
 use regex::Regex;
+use std::sync::Arc;
 
 /// Configuration for the Aliyun Log Service client.
 ///
@@ -22,9 +25,7 @@ use regex::Regex;
 #[derive(Clone)]
 pub struct Config {
     pub(crate) endpoint: Endpoint,
-    pub(crate) access_key_id: String,
-    pub(crate) access_key_secret: String,
-    pub(crate) security_token: Option<String>,
+    pub(crate) credentials: Arc<CredentialsCache>,
     pub(crate) connection_timeout: std::time::Duration,
     pub(crate) request_timeout: std::time::Duration,
     pub(crate) max_retry: u32,
@@ -62,6 +63,8 @@ pub struct ConfigBuilder {
     access_key_id: Option<String>,
     access_key_secret: Option<String>,
     security_token: Option<String>,
+    credentials_provider: Option<SharedCredentialsProvider>,
+    credentials_fetch_timeout: Option<std::time::Duration>,
     connection_timeout: Option<std::time::Duration>,
     request_timeout: Option<std::time::Duration>,
 }
@@ -116,6 +119,30 @@ impl ConfigBuilder {
         self
     }
 
+    /// Use a custom asynchronous credentials provider.
+    ///
+    /// Fetching is lazy. The SDK caches credentials, refreshes them before expiration,
+    /// and falls back to old credentials (even expired ones) on fetch failure.
+    /// Concurrent fetches are allowed. Each fetch round has at most three attempts;
+    /// an exhausted round suppresses new rounds for 15 seconds.
+    ///
+    /// Cannot be combined with [`Self::access_key`] or [`Self::sts`]. Clones of the
+    /// built [`Config`] share the cache, including its failure cooldown.
+    pub fn credentials_provider(mut self, provider: impl CredentialsProvider) -> Self {
+        self.credentials_provider = Some(SharedCredentialsProvider::new(provider));
+        self
+    }
+
+    /// Set the timeout for each credentials fetch attempt (default: 5 seconds).
+    ///
+    /// Must be nonzero. Independent of the SLS HTTP request timeout; a fetch round
+    /// takes at most three such timeouts plus 300ms of retry delays, provided the
+    /// provider yields to the async runtime. Cancellation drops the provider future.
+    pub fn credentials_fetch_timeout(mut self, timeout: std::time::Duration) -> Self {
+        self.credentials_fetch_timeout = Some(timeout);
+        self
+    }
+
     /// Set the connection timeout.
     ///
     /// # Arguments
@@ -146,20 +173,29 @@ impl ConfigBuilder {
             .unwrap_or(DEFAULT_CONNECTION_TIMEOUT);
 
         let request_timeout = self.request_timeout.unwrap_or(DEFAULT_REQUEST_TIMEOUT);
-        let security_token = if is_empty_or_none(&self.security_token) {
-            None
-        } else {
-            self.security_token
+        let fetch_timeout = self
+            .credentials_fetch_timeout
+            .unwrap_or(DEFAULT_FETCH_TIMEOUT);
+        if fetch_timeout.is_zero() {
+            return Err(ConfigError::Other(anyhow::anyhow!(
+                "credentials fetch timeout must be nonzero"
+            )));
+        }
+        let provider = match self.credentials_provider {
+            Some(provider) => provider,
+            None => SharedCredentialsProvider::new(
+                static_credentials_provider(
+                    self.access_key_id.unwrap(),
+                    self.access_key_secret.unwrap(),
+                    self.security_token,
+                )
+                .map_err(|_| ConfigError::InvalidAccessKey)?,
+            ),
         };
-
-        let access_key_id = self.access_key_id.unwrap();
-        let access_key_secret = self.access_key_secret.unwrap();
 
         Ok(Config {
             endpoint,
-            access_key_id,
-            access_key_secret,
-            security_token,
+            credentials: Arc::new(CredentialsCache::new(provider, fetch_timeout)),
             request_timeout,
             connection_timeout,
             max_retry: DEFAULT_MAX_RETRY,
@@ -200,6 +236,17 @@ impl ConfigBuilder {
     }
 
     fn validate_credentials(&self) -> Result<(), ConfigError> {
+        if self.credentials_provider.is_some() {
+            if self.access_key_id.is_some()
+                || self.access_key_secret.is_some()
+                || self.security_token.is_some()
+            {
+                return Err(ConfigError::Other(anyhow::anyhow!(
+                    "credentials_provider cannot be combined with access_key or sts"
+                )));
+            }
+            return Ok(());
+        }
         if is_empty_or_none(&self.access_key_id) || is_empty_or_none(&self.access_key_secret) {
             return Err(ConfigError::InvalidAccessKey);
         }

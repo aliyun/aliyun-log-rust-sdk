@@ -45,6 +45,8 @@ pub use list_shards::*;
 mod get_logs;
 use crate::request::Request;
 use crate::response::{DecompressedResponse, FromHttpResponse, Response};
+#[cfg(test)]
+mod credentials_tests;
 pub use get_logs::*;
 mod put_logs_raw;
 pub use put_logs_raw::*;
@@ -200,27 +202,32 @@ impl Handle {
         // prepare http request parameters
         let url = self.build_url(host.as_ref(), path.as_ref(), &query_params)?;
 
-        // do request signing
-        let query_params = query_params.unwrap_or_default();
-
-        sign_v1(
-            &self.config.access_key_id,
-            &self.config.access_key_secret,
-            self.config.security_token.as_deref(),
-            method.clone(),
-            path.as_ref(),
-            &mut headers,
-            query_params.into(),
-            body.as_deref(),
-        )
-        .map_err(RequestErrorKind::from)
-        .map_err(RequestError::from)?;
+        let query_params: aliyun_log_sdk_sign::QueryParams<'_> =
+            query_params.unwrap_or_default().into();
 
         let max_retry = self.config.max_retry + 1;
         for i in 0..max_retry {
+            // Acquire one complete snapshot and sign immediately before each HTTP attempt.
+            let credentials = self.config.credentials.get().await?;
+            let mut signed_headers = headers.clone();
+            signed_headers.remove(http::header::AUTHORIZATION);
+            signed_headers.remove("x-acs-security-token");
+            sign_v1(
+                credentials.access_key_id(),
+                credentials.access_key_secret(),
+                credentials.security_token(),
+                method.clone(),
+                path.as_ref(),
+                &mut signed_headers,
+                query_params.clone(),
+                body.as_deref(),
+            )
+            .map_err(RequestErrorKind::from)
+            .map_err(RequestError::from)?;
+
             // here body.clone() is O(1), no underlying data is copied
             match self
-                .send_signed_http(&method, &url, &headers, body.clone())
+                .send_signed_http(&method, &url, &signed_headers, body.clone())
                 .await
             {
                 Ok(resp) => {
