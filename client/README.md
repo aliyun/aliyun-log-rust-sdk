@@ -32,7 +32,7 @@ let resp = client.get_logs("my-project", "my-logstore")
     .to(now)                    // End time (required)
     .query("level:ERROR")       // Filter for error logs only
     .offset(0)                  // Start from the first log
-    .lines(100)                 // Return up to 100 logs
+    .line(100)                  // Return up to 100 logs
     .send()
     .await?;
 ```

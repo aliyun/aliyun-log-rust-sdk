@@ -34,7 +34,7 @@ impl crate::client::Client {
     ///     .to(now)                    // End time (required)
     ///     .query("level:ERROR")       // Filter for error logs only
     ///     .offset(0)                  // Start from the first log
-    ///     .lines(100)                 // Return up to 100 logs
+    ///     .line(100)                  // Return up to 100 logs
     ///     .send()
     ///     .await?;
     ///
@@ -196,13 +196,20 @@ impl GetLogsRequestBuilder {
         self
     }
 
-    /// The number of logs to return, required if the query is not in sql mode.
-    pub fn line(mut self, lines: u32) -> Self {
-        self.line = Some(lines);
+    /// Optional, the maximum number of logs to return for a non-SQL query.
+    /// If omitted, the service defaults to 100. For SQL queries, use a LIMIT clause.
+    pub fn line(mut self, line: u32) -> Self {
+        self.line = Some(line);
         self
     }
 
-    /// The offset of the logs to return, required if the query is not in sql mode.
+    /// Alias for [`Self::line`], retained for compatibility with existing callers.
+    pub fn lines(self, lines: u32) -> Self {
+        self.line(lines)
+    }
+
+    /// Optional, the starting row for a non-SQL query, default 0.
+    /// For SQL queries, use a LIMIT clause instead.
     pub fn offset(mut self, offset: u32) -> Self {
         self.offset = Some(offset);
         self
@@ -304,6 +311,82 @@ impl GetLogsResponse {
 impl FromHttpResponse for GetLogsResponse {
     fn try_from(body: bytes::Bytes, http_headers: &http::HeaderMap) -> ResponseResult<Self> {
         parse_json_response(body.as_ref(), http_headers)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn client() -> Client {
+        let config = Config::builder()
+            .endpoint("localhost")
+            .access_key("test-id", "test-secret")
+            .build()
+            .unwrap();
+        Client::from_config(config).unwrap()
+    }
+
+    #[test]
+    fn request_body_uses_line_for_explicit_limits() {
+        let client = client();
+        for lines in [0, 1, 17, 100] {
+            let (_, request) = client
+                .get_logs("test-project", "test-logstore")
+                .from(1609459200)
+                .to(1609462800)
+                .query("V2")
+                .offset(0)
+                .line(lines)
+                .reverse(false)
+                .build()
+                .unwrap();
+            let body = request.body().unwrap().unwrap();
+            let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
+            assert_eq!(body["line"], lines);
+            assert!(body.get("lines").is_none());
+            assert_eq!(body["offset"], 0);
+            assert_eq!(body["query"], "V2");
+            assert_eq!(body["reverse"], false);
+        }
+    }
+
+    #[test]
+    fn lines_alias_preserves_limits_and_last_setter_wins() {
+        let client = client();
+        let builders = [
+            client.get_logs("test-project", "test-logstore").lines(1),
+            client
+                .get_logs("test-project", "test-logstore")
+                .line(17)
+                .lines(1),
+            client
+                .get_logs("test-project", "test-logstore")
+                .lines(17)
+                .line(1),
+        ];
+        for builder in builders {
+            let (_, request) = builder.from(1609459200).to(1609462800).build().unwrap();
+            let body = request.body().unwrap().unwrap();
+            let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
+            assert_eq!(body["line"], 1);
+            assert!(body.get("lines").is_none());
+        }
+    }
+
+    #[test]
+    fn request_body_omits_unspecified_line_limit() {
+        let (_, request) = client()
+            .get_logs("test-project", "test-logstore")
+            .from(1609459200)
+            .to(1609462800)
+            .query("*")
+            .build()
+            .unwrap();
+        let body = request.body().unwrap().unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert!(body.get("line").is_none());
+        assert!(body.get("lines").is_none());
     }
 }
 
