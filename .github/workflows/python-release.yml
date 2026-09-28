@@ -99,6 +99,9 @@ jobs:
               apt-get update
               apt-get install -y --no-install-recommends perl make
             fi
+            if [ "${{ matrix.kind }}" = graalpy ]; then
+              bash bindings/python/ci/install_graalpy_linux.sh "${{ matrix.graalpy_url }}" "${{ matrix.graalpy_sha256 }}"
+            fi
           args: --release --manifest-path bindings/python/Cargo.toml --interpreter ${{ matrix.interpreter }} ${{ matrix.features }} --auditwheel repair --out dist
       - uses: actions/upload-artifact@v4
         with:
@@ -127,12 +130,12 @@ jobs:
         with:
           python-version: ${{ matrix.interpreter }}
           architecture: ${{ matrix.arch }}
-      - name: Select GraalPy 25.0 build interpreter
+      - name: Select GraalPy build interpreter
         if: matrix.kind == 'graalpy'
         id: graalpy
         uses: actions/setup-python@v6
         with:
-          python-version: 'graalpy-25.0'
+          python-version: ${{ matrix.setup_python }}
       # Use managed CPython/PyPy interpreters for both macOS architectures.
       - uses: astral-sh/setup-uv@v6
         if: runner.os == 'macOS' && matrix.kind != 'graalpy'

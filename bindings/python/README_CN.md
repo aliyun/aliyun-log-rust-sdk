@@ -4,7 +4,7 @@
 
 将日志发送到阿里云日志服务（SLS），支持批量发送、失败重试和结果回调。
 
-构建目标包括 CPython 3.8+、PyPy 3.11 和 GraalPy 25.0+ / Python 3.12，覆盖 macOS、Windows、Linux；各解释器支持的架构有所不同。CPython 3.14t 包导入时会启用 GIL。详细信息请参阅[平台支持](docs/platforms_cn.md)。
+构建目标包括 CPython 3.8+、PyPy 3.11 和 GraalPy / Python 3.12–3.13，覆盖 macOS、Windows、Linux；各解释器支持的架构有所不同。详细信息请参阅[平台支持](docs/platforms_cn.md)。
 
 | 文档 | 内容 |
 | --- | --- |

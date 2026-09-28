@@ -122,7 +122,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.check-ci.outputs.alternative) }}
-    name: runtime (${{ matrix.os }}, ${{ matrix.kind }})
+    name: runtime (${{ matrix.os }}, ${{ matrix.kind }}, ${{ matrix.python }})
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
@@ -152,7 +152,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: python-runtime-${{ matrix.os }}-${{ matrix.kind }}
+          name: python-runtime-${{ matrix.os }}-${{ matrix.kind }}-${{ matrix.python }}
           path: wheelhouse/runtime/*.whl
           if-no-files-found: ignore
 

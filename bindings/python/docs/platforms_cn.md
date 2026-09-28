@@ -2,11 +2,18 @@
 
 [English](platforms.md) · [返回 README](../README_CN.md)
 
-构建矩阵以 pydantic-core 2.46.5 为基线：CPython 3.9–3.14、3.14t、PyPy 3.11，以及 GraalPy 25.0 / Python 3.12。额外为全部 16 个平台构建 `cp38-abi3`（支持普通 CPython 3.8+）。共 131 个 wheel 和 1 个 sdist。下表是构建目标，徽章表示发布构建结果，不代表已在所有最低系统版本上运行测试。
+构建矩阵以 pydantic-core 2.46.5 为基线：CPython 3.9–3.14、3.14t、PyPy 3.11，以及扩展到 Python 3.12–3.13 的 GraalPy。额外为全部 16 个平台构建 `cp38-abi3`（支持普通 CPython 3.8+）。共 134 个 wheel 和 1 个 sdist。下表是构建目标，徽章表示发布构建结果，不代表已在所有最低系统版本上运行测试。
 
-Windows ARM64 专用包从 CPython 3.11 开始；musl i686 只提供 ABI3。PyPy/GraalPy/3.14t 不能使用 `cp38-abi3`。3.14t 导入模块会启用 GIL，尚不支持无 GIL 执行或子解释器。GraalPy 3.11 不在支持范围内。
+Windows ARM64 专用包从 CPython 3.11 开始；musl i686 只提供 ABI3。PyPy/GraalPy/3.14t 不能使用 `cp38-abi3`。尚不支持子解释器。GraalPy 3.11 不在支持范围内。
 
-实测 GraalPy 25.x 回收 Python 对象时不调用 `__del__`。Producer 在该运行时使用 weakref 终结回调，但应用仍须通过 `with` 或 `close()` 保证日志发送完成。仅跳过依赖 `__del__` 的回归测试，回调/凭据引用释放和显式关闭测试仍执行。GraalPy 进程退出时会等待正在执行的投递回调返回，以确保线程安全离开 native 代码；回调中的 I/O 必须设置有限超时。
+实测 GraalPy 25.x 回收 Python 对象时不调用 `__del__`。Producer 在该运行时使用 weakref 终结回调，但应用仍须通过 `with` 或 `close()` 保证日志发送完成。所有支持的运行时均执行回调/凭据引用释放和显式关闭测试。GraalPy 进程退出时会等待正在执行的投递回调或凭据刷新返回，以确保线程安全离开 native 代码；回调和 provider 中的 I/O 必须设置有限超时。
+
+GraalPy 在 Linux x86_64/ARM64 和 macOS ARM64 上，分别使用 25.2.4 构建
+Python 3.12、25.4.4 构建 Python 3.13。macOS Intel 保留 25.0.1 / Python 3.12；
+上游新版本不再提供该平台发行包，因此不构建其 Python 3.13 wheel。共 7 个 GraalPy
+wheel。版本固定为更新矩阵时核实的最新可用版本，不在构建时自动漂移。
+参见[上游发行清单](https://github.com/oracle/graalpython/releases)。macOS Intel 的
+GraalPy 徽章仅覆盖 3.12，其他 GraalPy 徽章汇总两个 Python 版本。
 
 ## 系统基线
 
@@ -19,7 +26,7 @@ CPython ABI3 只保证扩展 ABI 兼容，不降低解释器本身的操作系�
 
 ## 构建状态
 
-| 平台 | ABI3 | CPython | 3.14t（启用 GIL） | PyPy 3.11 | GraalPy 3.12 |
+| 平台 | ABI3 | CPython | 3.14t | PyPy 3.11 | GraalPy 3.12 / 3.13 |
 | --- | --- | --- | --- | --- | --- |
 | manylinux2014-x86_64 | [![abi3](https://raw.githubusercontent.com/aliyun/aliyun-log-rust-sdk/python-build-status/manylinux2014-x86_64.svg)](https://github.com/aliyun/aliyun-log-rust-sdk/actions/workflows/python-release.yml) | [![native](https://raw.githubusercontent.com/aliyun/aliyun-log-rust-sdk/python-build-status/manylinux2014-x86_64-native.svg)](https://github.com/aliyun/aliyun-log-rust-sdk/actions/workflows/python-release.yml) | [![free-threaded](https://raw.githubusercontent.com/aliyun/aliyun-log-rust-sdk/python-build-status/manylinux2014-x86_64-free-threaded.svg)](https://github.com/aliyun/aliyun-log-rust-sdk/actions/workflows/python-release.yml) | [![pypy](https://raw.githubusercontent.com/aliyun/aliyun-log-rust-sdk/python-build-status/manylinux2014-x86_64-pypy.svg)](https://github.com/aliyun/aliyun-log-rust-sdk/actions/workflows/python-release.yml) | [![graalpy](https://raw.githubusercontent.com/aliyun/aliyun-log-rust-sdk/python-build-status/manylinux2014-x86_64-graalpy.svg)](https://github.com/aliyun/aliyun-log-rust-sdk/actions/workflows/python-release.yml) |
 | manylinux2014-aarch64 | [![abi3](https://raw.githubusercontent.com/aliyun/aliyun-log-rust-sdk/python-build-status/manylinux2014-aarch64.svg)](https://github.com/aliyun/aliyun-log-rust-sdk/actions/workflows/python-release.yml) | [![native](https://raw.githubusercontent.com/aliyun/aliyun-log-rust-sdk/python-build-status/manylinux2014-aarch64-native.svg)](https://github.com/aliyun/aliyun-log-rust-sdk/actions/workflows/python-release.yml) | [![free-threaded](https://raw.githubusercontent.com/aliyun/aliyun-log-rust-sdk/python-build-status/manylinux2014-aarch64-free-threaded.svg)](https://github.com/aliyun/aliyun-log-rust-sdk/actions/workflows/python-release.yml) | — | [![graalpy](https://raw.githubusercontent.com/aliyun/aliyun-log-rust-sdk/python-build-status/manylinux2014-aarch64-graalpy.svg)](https://github.com/aliyun/aliyun-log-rust-sdk/actions/workflows/python-release.yml) |

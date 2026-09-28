@@ -35,8 +35,8 @@ class ReleaseCoverageTest(unittest.TestCase):
     def test_runtime_counts_and_unique_artifacts(self):
         from collections import Counter
         self.assertEqual(Counter(entry["kind"] for entry in self.entries),
-                         {"abi3": 16, "native": 88, "free-threaded": 15, "pypy": 8, "graalpy": 4})
-        self.assertEqual(len(set(self.wheels)), 131)
+                         {"abi3": 16, "native": 88, "free-threaded": 15, "pypy": 8, "graalpy": 7})
+        self.assertEqual(len(set(self.wheels)), 134)
         check_coverage(self.wheels)
 
     def test_missing_and_duplicate_cannot_cancel_each_other(self):
@@ -44,6 +44,33 @@ class ReleaseCoverageTest(unittest.TestCase):
             check_coverage(self.wheels[:-1] + [self.wheels[0]])
         with self.assertRaisesRegex(ValueError, "missing"):
             check_coverage(self.wheels[:-1])
+
+    def test_graalpy_versions_and_legacy_intel_exception(self):
+        graalpy = [row for row in self.entries if row["kind"] == "graalpy"]
+        for row in graalpy:
+            intel = row["platform"] == "x86_64-apple-darwin"
+            with self.subTest(job=row["id"]):
+                if intel:
+                    self.assertEqual(row["python"], "3.12")
+                    self.assertEqual(row["setup_python"], "graalpy-25.0.1")
+                elif row["python"] == "3.12":
+                    self.assertEqual(row["setup_python"], "graalpy-25.2.4")
+                else:
+                    self.assertEqual(row["setup_python"], "graalpy-25.4.4")
+                if row["python"] == "3.13":
+                    self.assertEqual(row["tag"], "graalpy313-graalpy253_313_native")
+                if "policy" in row:
+                    self.assertIn(row["setup_python"].removeprefix("graalpy-"), row["graalpy_url"])
+                    self.assertRegex(row["graalpy_sha256"], r"^[0-9a-f]{64}$")
+
+        # Each test job must agree with the release runtime on that same host.
+        desktop = {(row["runner"], row["python"]): row for row in graalpy if "runner" in row}
+        alternative = ci_matrices()["alternative"]["include"]
+        identities = [(row["os"], row["kind"], row["python"]) for row in alternative]
+        self.assertEqual(len(identities), len(set(identities)))
+        for row in alternative:
+            if row["kind"] == "graalpy" and row["os"].startswith("macos"):
+                self.assertEqual(row["setup_python"], desktop[row["os"], row["python"]]["setup_python"])
 
     def test_wrong_abi_or_raised_system_baseline_fails(self):
         for old, new in [("cp38-abi3", "cp39-abi3"), ("manylinux2014", "manylinux_2_28")]:
