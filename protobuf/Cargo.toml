@@ -1,6 +1,6 @@
 [package]
 name = "aliyun-log-sdk-protobuf"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Aliyun Log Service"]
 description = "A crate to serialize log data for Aliyun Log Service."
