@@ -153,7 +153,7 @@ impl LogstoreWriter {
         if gate.state != ProducerState::Running {
             return Err(shared.reject(ProducerError::Closed { log: prepared.log }));
         }
-        if callback.is_some() && gate.callbacks >= shared.runtime_config.callback_capacity {
+        if callback.is_some() && gate.callbacks >= shared.config.callback_capacity {
             return Err(shared.reject(ProducerError::EnqueueFull { log: prepared.log }));
         }
         if shared.overloaded.load(Ordering::Relaxed) {

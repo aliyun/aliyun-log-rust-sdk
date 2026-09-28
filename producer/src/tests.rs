@@ -862,7 +862,7 @@ async fn flush_observes_completed_delivery_while_callback_queue_is_full() {
     let settings = config().with_callback_capacity(1024);
     // One running callback, a full queue, a blocked publication, and one more
     // submission whose delivery must be recorded before that publication resumes.
-    let count = crate::config::RuntimeConfig::new(&settings).callback_capacity;
+    let count = settings.callback_capacity();
     let (producer, writers) = start(settings.with_batch_count_threshold(count), vec![transport]);
     for _ in 0..count {
         while producer.base.inner.tx.capacity() == 0 {

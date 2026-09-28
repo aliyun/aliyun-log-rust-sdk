@@ -340,7 +340,6 @@ pub(crate) struct RuntimeConfig {
     pub tick_interval: Duration,
     pub input_capacity: usize,
     pub batch_capacity: usize,
-    pub callback_capacity: usize,
     pub max_inflight_batches: usize,
     pub max_blocking_threads: usize,
 }
@@ -355,7 +354,6 @@ impl RuntimeConfig {
             },
             input_capacity: 1024,
             batch_capacity: 64,
-            callback_capacity: config.callback_capacity,
             // Bound task and retry storage independently of execution thread counts.
             max_inflight_batches: 1024,
             max_blocking_threads: 2,
