@@ -6,7 +6,7 @@
 
 Windows ARM64 专用包从 CPython 3.11 开始；musl i686 只提供 ABI3。PyPy/GraalPy/3.14t 不能使用 `cp38-abi3`。3.14t 导入模块会启用 GIL，尚不支持无 GIL 执行或子解释器。GraalPy 3.11 不在支持范围内。
 
-实测 GraalPy 25.x 回收 Python 对象时不调用 `__del__`。Producer 在该运行时使用 weakref 终结回调，但应用仍须通过 `with` 或 `close()` 保证日志发送完成。仅跳过依赖 `__del__` 的回归测试，回调/凭据引用释放和显式关闭测试仍执行。
+实测 GraalPy 25.x 回收 Python 对象时不调用 `__del__`。Producer 在该运行时使用 weakref 终结回调，但应用仍须通过 `with` 或 `close()` 保证日志发送完成。仅跳过依赖 `__del__` 的回归测试，回调/凭据引用释放和显式关闭测试仍执行。GraalPy 进程退出时会等待正在执行的投递回调返回，以确保线程安全离开 native 代码；回调中的 I/O 必须设置有限超时。
 
 ## 系统基线
 

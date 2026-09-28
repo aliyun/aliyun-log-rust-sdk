@@ -6,7 +6,7 @@ The build matrix follows pydantic-core 2.46.5: CPython 3.9–3.14, 3.14t, PyPy 3
 
 Windows ARM64 native wheels start at CPython 3.11; musl i686 has ABI3 only. PyPy/GraalPy/3.14t cannot use `cp38-abi3`. Importing on 3.14t enables the GIL; no-GIL execution and subinterpreters are not supported. GraalPy 3.11 is not supported.
 
-GraalPy does not invoke Python `__del__` on collected objects in the tested 25.x runtimes. The producer uses weakref finalization there, but applications must still use `with` or `close()` to guarantee delivery. Its destructor-specific regression is skipped; callback/provider reference-release and explicit shutdown tests still run.
+GraalPy does not invoke Python `__del__` on collected objects in the tested 25.x runtimes. The producer uses weakref finalization there, but applications must still use `with` or `close()` to guarantee delivery. Its destructor-specific regression is skipped; callback/provider reference-release and explicit shutdown tests still run. On GraalPy, process exit waits for any currently executing delivery callback to return so that its thread can leave native code safely; callback I/O must have finite timeouts.
 
 ## System baselines
 
