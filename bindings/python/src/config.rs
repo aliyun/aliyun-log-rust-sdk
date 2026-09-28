@@ -69,7 +69,7 @@ impl ProducerConfig {
                     "credentials_provider cannot be combined with access_key_id, access_key_secret or security_token",
                 ));
             }
-            inner.with_credentials_provider(PythonCredentialsProvider::new(provider))
+            inner.with_credentials_provider(PythonCredentialsProvider::new(provider)?)
         } else {
             let (Some(id), Some(secret)) = (access_key_id, access_key_secret) else {
                 return Err(PyValueError::new_err(

@@ -126,9 +126,18 @@ assert results == ["self-wait rejected", None], results
 """)
 
 
+@pytest.mark.skipif(sys.implementation.name == "graalpy",
+                    reason="GraalPy collects pure-Python objects without invoking __del__; weakref release is tested separately")
 def test_callback_destructor_can_reenter_after_delivery_and_rejection(service):
     run_child(service, """
 import gc
+import time
+def wait_for_collection(event):
+    deadline = time.monotonic() + 5
+    while not event.is_set() and time.monotonic() < deadline:
+        gc.collect()
+        event.wait(0.01)
+    assert event.is_set()
 p = Producer(config(access_key_id="id", access_key_secret="secret", ))
 w = p.writer("127", "store")
 destroyed = threading.Event()
@@ -141,9 +150,12 @@ class Delivered:
         # submission locks held, whether immediate or deferred by PyO3.
         w.send({"from": "destructor"})
         destroyed.set()
-w.send({}, on_delivery=Delivered())
-gc.collect()
-assert destroyed.wait(5)
+def submit_delivery():
+    # End the allocating frame before requesting GC: a tracing interpreter may
+    # keep temporary C-extension arguments alive until their frame returns.
+    w.send({}, on_delivery=Delivered())
+submit_delivery()
+wait_for_collection(destroyed)
 p.close()
 assert results == [None], results
 
@@ -157,11 +169,12 @@ class Rejected:
             w.send({})
         except ProducerClosedError:
             destroyed.set()
-try:
-    w.send({}, on_delivery=Rejected())
-except ProducerClosedError:
-    pass
-gc.collect()
-assert destroyed.wait(5)
+def submit_rejection():
+    try:
+        w.send({}, on_delivery=Rejected())
+    except ProducerClosedError:
+        pass
+submit_rejection()
+wait_for_collection(destroyed)
 assert results == [None], results
 """)

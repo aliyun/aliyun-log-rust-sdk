@@ -1,13 +1,42 @@
 """Python-owned event dispatch over the Rust BaseProducer."""
+import atexit
+import sys
 import threading
+import weakref
 
 from ._native import _BaseProducer, ProducerError
 
 
-def _poll(native):
+# GraalPy terminates daemon threads at context shutdown. They must first leave
+# native calls: killing a thread inside PyEval_RestoreThread can crash GraalPy.
+_graalpy_threads = {}
+_graalpy_lock = threading.Lock()
+
+
+def _stop_graalpy_threads():
+    with _graalpy_lock:
+        threads = list(_graalpy_threads.items())
+    for thread, (native, stop, _) in threads:
+        stop.set()
+        native._begin_close()
+    for thread, (_, _, join_lock) in threads:
+        with join_lock:
+            thread.join()
+
+
+if sys.implementation.name == "graalpy":
+    atexit.register(_stop_graalpy_threads)
+
+
+def _poll(native, stop):
     # This function owns no reference to the public Producer wrapper.
-    while not native._is_closed():
-        native._poll(0.1)
+    try:
+        while not stop.is_set() and not native._is_closed():
+            native._poll(0.1)
+    finally:
+        if sys.implementation.name == "graalpy":
+            with _graalpy_lock:
+                _graalpy_threads.pop(threading.current_thread(), None)
 
 
 class Producer:
@@ -29,13 +58,22 @@ class Producer:
     """
     def __init__(self, config):
         self._native = _BaseProducer(config)
+        stop = threading.Event()
+        self._join_lock = threading.Lock()
         self._thread = threading.Thread(
-            target=_poll, args=(self._native,),
+            target=_poll, args=(self._native, stop),
             name="sls-producer-poll", daemon=True,
         )
+        if sys.implementation.name == "graalpy":
+            # GraalPy does not invoke Python __del__, but supports weakrefs.
+            weakref.finalize(self, self._native._begin_close)
+            with _graalpy_lock:
+                _graalpy_threads[self._thread] = (self._native, stop, self._join_lock)
         try:
             self._thread.start()
         except BaseException:
+            with _graalpy_lock:
+                _graalpy_threads.pop(self._thread, None)
             self._native._begin_close()
             raise
 
@@ -64,7 +102,10 @@ class Producer:
         try:
             self._native._wait_closed()  # Releases the GIL during the wait.
         finally:
-            self._thread.join()  # Also releases the GIL while waiting.
+            # GraalPy 25.0's Thread.join cannot safely stop the same thread
+            # concurrently. Serialize only joining, after native shutdown.
+            with self._join_lock:
+                self._thread.join()  # Also releases the GIL while waiting.
 
     def __enter__(self):
         return self

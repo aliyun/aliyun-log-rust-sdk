@@ -21,6 +21,16 @@ from aliyun_log_producer import (
 )
 
 
+def assert_collected(reference):
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        gc.collect()
+        if reference() is None:
+            return
+        time.sleep(0.01)
+    assert reference() is None
+
+
 def test_log_snapshot_and_ranges():
     contents = [("key", "first"), ("key", "second")]
     log = Log(contents, time=2**32 - 1, time_ns=999999999)
@@ -97,20 +107,21 @@ def test_callable_forms_and_reference_release(make_producer):
             results.append(("object", error))
         def method(self, error):
             results.append(("method", error))
-    receiver = Receiver()
-    ref = weakref.ref(receiver)
-    def function(error):
-        results.append(("function", error))
-    def with_context(context, error):
-        results.append((context, error))
-    callbacks = [function, lambda error: results.append(("lambda", error)), receiver,
-                 receiver.method, functools.partial(with_context, "partial")]
-    for callback in callbacks:
-        writer.send(Log([]), on_delivery=callback)
-    del receiver, callbacks, callback
+    def submit_callbacks():
+        receiver = Receiver()
+        ref = weakref.ref(receiver)
+        def function(error):
+            results.append(("function", error))
+        def with_context(context, error):
+            results.append((context, error))
+        callbacks = [function, lambda error: results.append(("lambda", error)), receiver,
+                     receiver.method, functools.partial(with_context, "partial")]
+        for callback in callbacks:
+            writer.send(Log([]), on_delivery=callback)
+        return ref
+    ref = submit_callbacks()
     producer.close()
-    gc.collect()
-    assert ref() is None
+    assert_collected(ref)
     assert sorted(results) == [(name, None) for name in ["function", "lambda", "method", "object", "partial"]]
 
 
@@ -123,7 +134,12 @@ def test_noncallable_reports_invocation_error(make_producer, monkeypatch):
     producer.close()
     assert [item.exc_type for item in failures] == [TypeError, TypeError]
     # Delivery callbacks may complete in either order.
-    assert {item.object for item in failures} == {1, "callback"}
+    if sys.implementation.name == "pypy":
+        # PyPy's PyErr_WriteUnraisable puts the object's repr in err_msg.
+        assert all(item.object is None for item in failures)
+        assert {item.err_msg for item in failures} == {"Exception ignored in: 1", "Exception ignored in: 'callback'"}
+    else:
+        assert {item.object for item in failures} == {1, "callback"}
 
 
 def test_callback_return_values_are_ignored(make_producer, monkeypatch):
@@ -161,7 +177,11 @@ def test_callback_exception_does_not_stop_worker(make_producer, monkeypatch):
     producer.close()
     assert results == [None]
     assert [item.exc_type for item in failures] == [RuntimeError]
-    assert failures[0].object is broken
+    if sys.implementation.name == "pypy":
+        assert failures[0].object is None
+        assert repr(broken) in failures[0].err_msg
+    else:
+        assert failures[0].object is broken
 
 
 def test_structured_delivery_failure(make_producer, service):
@@ -252,8 +272,7 @@ def test_rejection_releases_callback_without_invoking(make_producer):
     with pytest.raises(ProducerClosedError):
         writer.send(log, on_delivery=callback)
     del callback
-    gc.collect()
-    assert ref() is None
+    assert_collected(ref)
     assert calls == [] and log.contents == [("message", "original")]
     producer.close()
     producer.close()
@@ -285,8 +304,7 @@ def test_capacity_rejection_and_retry(make_producer, service):
     with pytest.raises(EnqueueFullError):
         writer.send(log, on_delivery=callback)
     del callback
-    gc.collect()
-    assert ref() is None
+    assert_collected(ref)
     service.release.set()
     producer.flush()
     # Pressure may take another tick to clear; retry keeps the same input.
@@ -465,3 +483,17 @@ def test_dict_send_after_close_preserves_input_without_callback(make_producer):
 def test_producer_errors_share_a_catchable_base(error_type):
     with pytest.raises(ProducerError):
         raise error_type("producer operation failed")
+
+
+def test_collected_producer_stops_its_poll_thread(service):
+    def create():
+        producer = Producer(ProducerConfig(endpoint=service.endpoint, access_key_id="id",
+                                           access_key_secret="secret", linger=0))
+        return weakref.ref(producer), producer._thread
+    reference, thread = create()
+    assert_collected(reference)
+    deadline = time.monotonic() + 5
+    while thread.is_alive() and time.monotonic() < deadline:
+        gc.collect()
+        thread.join(0.01)
+    assert not thread.is_alive()

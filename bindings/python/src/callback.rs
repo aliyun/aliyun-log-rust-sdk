@@ -32,6 +32,8 @@ impl Callback {
             if let Err(error) = invoke() {
                 error.write_unraisable(py, Some(callable));
             }
+            // Release while attached, including on tracing-GC interpreters.
+            self.callable.drop_ref(py);
         });
     }
 }
