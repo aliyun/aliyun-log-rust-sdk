@@ -55,5 +55,5 @@ For temporary credentials, supply the expiration time so the SDK can refresh the
 | `with_callback_capacity(value)` | `usize` | `65536` | Maximum logs waiting for callbacks to finish. When full, new sends with callbacks are rejected. |
 | `with_max_attempts(value)` | `u32` | `10` | Maximum sends per batch, including the first attempt. Set to 1 to disable retries. |
 | `with_base_backoff(value)` | `Duration` | 200 ms | Initial wait before retrying. Must not exceed `max_backoff`. Must be greater than zero and at most 365 days. |
-| `with_max_backoff(value)` | `Duration` | 10 s | Maximum wait between retries. Actual waits are randomized. Must be greater than zero and at most 365 days. |
+| `with_max_backoff(value)` | `Duration` | 10 s | Maximum wait between retries. Must be greater than zero and at most 365 days. |
 | `with_delivery_timeout(value)` | `Duration` | 600 s | Total time allowed to send a batch, including batching, requests, and retries. Must be greater than zero and at most 365 days. |

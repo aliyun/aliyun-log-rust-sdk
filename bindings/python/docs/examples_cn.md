@@ -41,7 +41,7 @@ writer.send({"message": "hello"}, on_delivery=on_delivery)
 ```
 
 如果 `send` 直接抛出异常，日志没有被接收，也不会触发回调。
-回调依次在后台执行，应尽快返回，避免阻塞后续回调。不要在回调中关闭或 flush 同一个 Producer。
+回调应尽快返回。不要在回调中关闭或 flush 同一个 Producer。
 
 ## 等待发送完成与关闭
 

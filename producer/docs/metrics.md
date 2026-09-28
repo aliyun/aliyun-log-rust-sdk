@@ -14,6 +14,6 @@ Counters combine all Producers in the process. They do not separate projects or 
 | `sls_producer_delivered_raw_bytes_total` | Estimated size in bytes of successfully delivered logs, before compression. Retried logs count once. |
 | `sls_producer_rejected_submissions_total` | Sends rejected because the Producer is full or closed. These logs are not included in delivery failures. |
 
-The byte estimate is the UTF-8 size of all keys and values, plus 16 bytes per log. Use it to estimate log volume, not network traffic.
+Use the byte count to estimate log volume, not network traffic.
 
-Delivery counters update about once per second and once more before close finishes. They may take longer to update under load.
+Metrics may have a short delay.

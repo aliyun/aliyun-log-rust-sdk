@@ -41,7 +41,7 @@ writer.send({"message": "hello"}, on_delivery=on_delivery)
 ```
 
 If `send` raises an exception, the log was not accepted and its callback will not run.
-Callbacks run one at a time in the background. Keep them short so they do not delay other callbacks. Do not close or flush the same Producer from a callback.
+Keep callbacks short. Do not close or flush the same Producer from a callback.
 
 ## Wait for logs and close the Producer
 

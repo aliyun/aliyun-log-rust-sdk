@@ -55,5 +55,5 @@ Producer 需要凭证才能写入日志。可以选择以下两种方式。
 | `with_callback_capacity(value)` | `usize` | `65536` | 最多允许多少条日志等待回调完成。达到后，带回调的新日志会被拒绝。 |
 | `with_max_attempts(value)` | `u32` | `10` | 每批日志最多发送多少次，包含首次发送。1 表示不重试。 |
 | `with_base_backoff(value)` | `Duration` | 200 ms | 首次重试前的等待时间，不能超过 `max_backoff`。必须大于 0，不超过 365 天。 |
-| `with_max_backoff(value)` | `Duration` | 10 s | 重试之间的最长等待时间，实际等待时间会随机调整。必须大于 0，不超过 365 天。 |
+| `with_max_backoff(value)` | `Duration` | 10 s | 重试之间的最长等待时间。必须大于 0，不超过 365 天。 |
 | `with_delivery_timeout(value)` | `Duration` | 600 s | 每批日志允许的总发送时间，包含等待更多日志、发送请求和重试。必须大于 0，不超过 365 天。 |
