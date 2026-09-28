@@ -162,7 +162,8 @@ impl BatchSender {
         let context = BatchContext {
             target,
             submission_ids: batch.submission_ids,
-            deadline: batch.oldest + self.shared.config.delivery_timeout,
+            deadline: batch.sealed_at.expect("batch sealed before dispatch")
+                + self.shared.config.delivery_timeout,
             attempts: 0,
             pack_id: batch.pack_id,
         };
@@ -217,24 +218,20 @@ impl BatchSender {
         }
         let context = &mut batch.context;
         context.attempts += 1;
-        let result = AssertUnwindSafe(async {
-            tokio::time::timeout_at(
-                tokio::time::Instant::from_std(context.deadline),
-                self.transport.send(
-                    &context.target.project,
-                    &context.target.logstore,
-                    batch.data.clone(),
-                    batch.raw_size,
-                    self.shared.config.compression,
-                ),
-            )
-            .await
-        })
+        // The delivery budget is soft: let an in-flight request finish under the
+        // client's own request timeout, and check the budget before another attempt.
+        let result = AssertUnwindSafe(self.transport.send(
+            &context.target.project,
+            &context.target.logstore,
+            batch.data.clone(),
+            batch.raw_size,
+            self.shared.config.compression,
+        ))
         .catch_unwind()
         .await;
         let outcome = match result {
-            Ok(Ok(Ok(()))) => Ok(()),
-            Ok(Ok(Err(error))) => {
+            Ok(Ok(())) => Ok(()),
+            Ok(Err(error)) => {
                 let details = DeliveryError::from_client(&error);
                 if retryable(&error) && context.attempts < self.shared.config.max_attempts {
                     let multiplier = 1u32.checked_shl(context.attempts - 1).unwrap_or(u32::MAX);
@@ -254,10 +251,6 @@ impl BatchSender {
                     return AttemptResult::Retry { batch, ready_at };
                 }
                 Err(details)
-            }
-            Ok(Err(_)) => {
-                log::debug!("SLS producer delivery timed out during request");
-                Err(DeliveryError::Timeout)
             }
             Err(_) => Err(DeliveryError::Internal(
                 "transport or credentials provider panicked".into(),

@@ -28,7 +28,7 @@ Rejected sends do not trigger a delivery callback. See the [usage examples](exam
 | `server` | SLS returned an error. Use the error code to check permissions, the target Logstore, or other settings. |
 | `network` | The network request failed. Check connectivity and the SLS endpoint. |
 | `credentials` | Could not obtain credentials. Check whether the credential source is available. |
-| `timeout` | Delivery did not finish within `delivery_timeout`. Check the network and service, and adjust the timeout if needed. |
+| `timeout` | The soft `delivery_timeout` budget was exhausted before processing or starting an attempt. Check the network and service, and adjust the timeout if needed. |
 | `invalid_response` | The service response could not be read. Check the endpoint and proxy settings. |
 | `internal` | Log processing failed. Keep the error message for troubleshooting. |
 | `unknown` | An unclassified delivery error. See `message` for details. |

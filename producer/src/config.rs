@@ -290,9 +290,10 @@ impl ProducerConfig {
         self.max_backoff
     }
 
-    /// Delivery deadline measured from the oldest admission in a batch. Defaults to 600 seconds.
-    /// All submissions in a batch share this deadline; later arrivals inherit the
-    /// remaining time. Includes batching, processing, HTTP requests and retries.
+    /// Soft delivery budget measured from batch sealing. Defaults to 600 seconds.
+    /// Includes queueing, processing, requests and retry delays, but excludes
+    /// accumulation (linger) and callbacks. Checked before processing or sending;
+    /// an in-flight request uses the client's own timeout and may finish later.
     pub fn with_delivery_timeout(mut self, value: Duration) -> Self {
         self.delivery_timeout = value;
         self

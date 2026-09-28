@@ -660,8 +660,18 @@ async fn unclassified_transport_errors_retry_until_attempt_limit() {
 }
 
 #[tokio::test]
-async fn deadline_reports_failure_and_does_not_hang_close() {
-    let transport = mock(|_, _| async { std::future::pending().await });
+async fn delivery_budget_stops_retries_after_a_slow_failed_request() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let observed = calls.clone();
+    let transport = mock(move |_, _| {
+        observed.fetch_add(1, Ordering::Relaxed);
+        async {
+            tokio::time::sleep(Duration::from_millis(120)).await;
+            Err(Error::Other(
+                std::io::Error::other("retryable failure").into(),
+            ))
+        }
+    });
     let (producer, writers) = start(
         config().with_delivery_timeout(Duration::from_millis(80)),
         vec![transport],
@@ -685,9 +695,37 @@ async fn deadline_reports_failure_and_does_not_hang_close() {
         0
     );
     let report = rx.await.unwrap();
+    assert_eq!(calls.load(Ordering::Relaxed), 1);
     let error = report.unwrap_err();
     assert!(matches!(error, DeliveryError::Timeout));
     assert!(error.http_status().is_none());
+}
+
+#[tokio::test]
+async fn delivery_budget_excludes_linger_and_does_not_cancel_successful_requests() {
+    let transport = mock(|_, _| async {
+        tokio::time::sleep(Duration::from_millis(120)).await;
+        Ok(())
+    });
+    let (producer, writers) = start(
+        config()
+            .with_linger(Duration::from_millis(150))
+            .with_delivery_timeout(Duration::from_millis(50)),
+        vec![transport],
+    );
+    let (tx, rx) = oneshot::channel();
+    writers[0]
+        .send_with_callback(entry("soft budget"), move |result| {
+            tx.send(result.clone()).unwrap();
+        })
+        .unwrap();
+    // Let linger seal the batch naturally, without flush or close shortening it.
+    tokio::time::timeout(Duration::from_secs(5), rx)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+    producer.test_close(Duration::from_secs(5)).await.unwrap();
 }
 
 #[tokio::test]
@@ -1565,7 +1603,10 @@ async fn queued_batches_expire_without_making_more_http_calls() {
     let observed = calls.clone();
     let transport = mock(move |_, _| {
         observed.fetch_add(1, Ordering::Relaxed);
-        async { std::future::pending().await }
+        async {
+            tokio::time::sleep(Duration::from_millis(120)).await;
+            Ok(())
+        }
     });
     let (producer, writers) = start_with_inflight_limit(
         config()
@@ -1584,7 +1625,11 @@ async fn queued_batches_expire_without_making_more_http_calls() {
     producer.test_close(Duration::from_secs(5)).await.unwrap();
     let report = rx.await.unwrap();
 
-    assert_eq!(delivery_counts(&producer.base.inner.shared).failed_logs, 2);
+    assert_eq!(delivery_counts(&producer.base.inner.shared).failed_logs, 1);
+    assert_eq!(
+        delivery_counts(&producer.base.inner.shared).succeeded_logs,
+        1
+    );
     assert!(matches!(report.unwrap_err(), DeliveryError::Timeout));
     assert_eq!(calls.load(Ordering::Relaxed), 1);
 }

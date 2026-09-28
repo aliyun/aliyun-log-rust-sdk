@@ -34,6 +34,7 @@ pub(crate) struct Batch {
     /// Estimated log-entry bytes; group metadata uses reserved request headroom.
     pub size: usize,
     pub oldest: Instant,
+    pub sealed_at: Option<Instant>,
     pub submission_ids: Vec<SubmissionId>,
     pub pack_id: Option<Arc<str>>,
 }
@@ -47,6 +48,7 @@ impl Batch {
             group,
             size: 0,
             oldest: admitted,
+            sealed_at: None,
             submission_ids: Vec::new(),
             pack_id: None,
         }

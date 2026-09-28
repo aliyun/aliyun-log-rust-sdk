@@ -28,7 +28,7 @@ See the [usage examples](examples.md) for a retry example.
 | `Server` | SLS returned an error. Use the error code to check permissions, the target Logstore, or other settings. |
 | `Network` | The network request failed. Check connectivity and the SLS endpoint. |
 | `Credentials` | Could not obtain credentials. Check whether the credential source is available. |
-| `Timeout` | Delivery did not finish within `delivery_timeout`. Check the network and service, and adjust the timeout if needed. |
+| `Timeout` | The soft `delivery_timeout` budget was exhausted before processing or starting an attempt. Check the network and service, and adjust the timeout if needed. |
 | `InvalidResponse` | The service response could not be read. Check the endpoint and proxy settings. |
 | `Internal` | Log processing failed. Keep the error message for troubleshooting. |
 

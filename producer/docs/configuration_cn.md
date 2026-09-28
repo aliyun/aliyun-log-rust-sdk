@@ -56,4 +56,4 @@ Producer 需要凭证才能写入日志。可以选择以下两种方式。
 | `with_max_attempts(value)` | `u32` | `10` | 每批日志最多发送多少次，包含首次发送。1 表示不重试。 |
 | `with_base_backoff(value)` | `Duration` | 200 ms | 首次重试前的等待时间，不能超过 `max_backoff`。必须大于 0，不超过 365 天。 |
 | `with_max_backoff(value)` | `Duration` | 10 s | 重试之间的最长等待时间。必须大于 0，不超过 365 天。 |
-| `with_delivery_timeout(value)` | `Duration` | 600 s | 每批日志允许的总发送时间，包含等待更多日志、发送请求和重试。必须大于 0，不超过 365 天。 |
+| `with_delivery_timeout(value)` | `Duration` | 600 s | 从封批开始计算的投递软时限，包含排队、处理、请求和重试，不包含聚合等待（`linger`）和回调。处理或发送前检查；正在进行的请求使用自身超时，允许稍晚完成。必须大于 0，不超过 365 天。 |

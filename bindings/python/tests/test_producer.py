@@ -204,8 +204,10 @@ def test_structured_delivery_failure(make_producer, service):
 
 
 def test_delivery_timeout_is_callback_data(make_producer, service):
-    service.release.clear()
-    producer, writer = make_producer(delivery_timeout=0.05)
+    service.status = 503
+    service.body = b'{"errorCode":"InternalServerError","errorMessage":"retry later"}'
+    producer, writer = make_producer(delivery_timeout=0.05, max_attempts=100,
+                                     base_backoff=0.1, max_backoff=0.1)
     results = []
     writer.send(Log([]), on_delivery=results.append)
     producer.close()

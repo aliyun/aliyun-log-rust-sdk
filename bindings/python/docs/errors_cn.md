@@ -27,7 +27,7 @@
 | `server` | SLS 返回错误。根据错误码检查权限、目标 Logstore 等设置。 |
 | `network` | 网络请求失败。检查网络连接和 SLS 服务地址。 |
 | `credentials` | 获取凭证失败。检查凭证来源是否可用。 |
-| `timeout` | 超过 `delivery_timeout`，仍未完成发送。检查网络和服务状态，必要时调整超时时间。 |
+| `timeout` | 处理或开始发送前发现已超过 `delivery_timeout` 软时限。检查网络和服务状态，必要时调整超时时间。 |
 | `invalid_response` | 无法识别服务返回的内容。检查服务地址和代理设置。 |
 | `internal` | 日志处理失败。保留错误信息以便排查。 |
 | `unknown` | 未归类的发送错误，具体原因见 `message`。 |

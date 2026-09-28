@@ -85,4 +85,4 @@ Unsupported calls have no guaranteed outcome or specific exception.
 | `max_attempts` | `int` | `10` | Maximum sends per batch, including the first attempt. Set to 1 to disable retries. |
 | `base_backoff` | `float` | `0.2` s | Initial wait before retrying. Must not exceed `max_backoff`. In seconds; must be greater than 0 and at most 31536000 (365 days). |
 | `max_backoff` | `float` | `10.0` s | Maximum wait between retries. In seconds; must be greater than 0 and at most 31536000 (365 days). |
-| `delivery_timeout` | `float` | `600.0` s | Total time allowed to send a batch, including batching, requests, and retries. In seconds; must be greater than 0 and at most 31536000 (365 days). |
+| `delivery_timeout` | `float` | `600.0` s | Soft delivery budget from batch sealing, including queueing, processing, requests, and retries. Excludes accumulation (`linger`) and callbacks. Checked before processing or sending; in-flight requests use their own timeout and may finish later. In seconds; must be greater than 0 and at most 31536000 (365 days). |

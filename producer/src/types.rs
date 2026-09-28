@@ -14,7 +14,7 @@ pub(crate) struct SubmissionId(pub u64);
 /// - [`DeliveryError::Server`]: a terminal service error or exhausted retries.
 /// - [`DeliveryError::Network`]: an HTTP transport error after allowed retries.
 /// - [`DeliveryError::Credentials`]: credentials could not be obtained.
-/// - [`DeliveryError::Timeout`]: the overall delivery deadline expired.
+/// - [`DeliveryError::Timeout`]: the soft delivery budget was exhausted before processing or sending.
 /// - [`DeliveryError::InvalidResponse`]: the client could not parse the response.
 /// - [`DeliveryError::Internal`]: local processing, a caught panic, a pipeline
 ///   failure, or a terminal client error without a more specific category.

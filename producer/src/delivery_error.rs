@@ -27,8 +27,9 @@ pub enum DeliveryError {
     /// Service authentication errors use [`Self::Server`].
     Credentials(String),
 
-    /// The overall [`crate::ProducerConfig::delivery_timeout`] expired.
-    /// It includes batching, processing, HTTP requests and retry delays.
+    /// The soft [`crate::ProducerConfig::delivery_timeout`] budget was exhausted
+    /// before processing or starting an attempt. Measured from batch sealing;
+    /// excludes accumulation and callbacks and does not cancel in-flight requests.
     Timeout,
 
     /// The service response could not be parsed after allowed retries.

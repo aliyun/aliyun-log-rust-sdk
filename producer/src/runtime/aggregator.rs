@@ -220,6 +220,7 @@ struct BatchOutput {
 
 impl BatchOutput {
     async fn forward(&mut self, mut batch: Batch, tick: &mut Interval) -> Result<(), String> {
+        batch.sealed_at = Some(Instant::now());
         if self.shared.config.generate_pack_id {
             let id = self
                 .pack_ids
