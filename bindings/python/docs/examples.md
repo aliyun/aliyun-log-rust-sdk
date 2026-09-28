@@ -1,6 +1,6 @@
 # Python usage examples
 
-[简体中文](examples_cn.md) · [Quick start](quickstart.md) · [Configuration](configuration.md)
+[简体中文](examples_cn.md) · [Quick start](quickstart.md) · [Configuration](configuration.md) · [Error handling](errors.md)
 
 These examples use the Producer and writer created in the [quick start](quickstart.md).
 
@@ -98,7 +98,6 @@ except EnqueueFullError:
 ```
 
 The second send can still fail and needs to be handled by your application. If you use a callback, pass `on_delivery` again when retrying.
-If you receive `ProducerClosedError`, check whether the Producer was closed too early.
 
 ## Send logs sooner
 

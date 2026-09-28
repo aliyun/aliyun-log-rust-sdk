@@ -9,6 +9,7 @@
 | [快速开始](docs/quickstart_cn.md) | 安装、创建 Producer、发送日志和关闭 |
 | [使用示例](docs/examples_cn.md) | 回调、flush、关闭、时间戳和多个 Logstore |
 | [配置参考](docs/configuration_cn.md) | 配置项、默认值和取值范围 |
+| [错误处理](docs/errors_cn.md) | 错误类型、含义和处理建议 |
 
 创建 Producer 后即可发送日志，不需要手动启动。程序运行期间复用 Producer 和 writer，退出前关闭。
 

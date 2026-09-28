@@ -1,6 +1,6 @@
 # Rust configuration
 
-[简体中文](configuration_cn.md) · [Quick start](quickstart.md) · [Examples](examples.md)
+[简体中文](configuration_cn.md) · [Quick start](quickstart.md) · [Examples](examples.md) · [Error handling](errors.md)
 
 Use the following code to create a Producer and send logs.
 
@@ -24,7 +24,7 @@ writer.send(log!("message": "hello"))?;
 producer.close_blocking()?;
 ```
 
-Creating a Producer with invalid settings returns `ProducerError::Config`.
+If creation fails, see [error handling](errors.md).
 
 ## Credentials
 

@@ -1,6 +1,6 @@
 # Python 配置参考
 
-[English](configuration.md) · [快速开始](quickstart_cn.md) · [使用示例](examples_cn.md)
+[English](configuration.md) · [快速开始](quickstart_cn.md) · [使用示例](examples_cn.md) · [错误处理](errors_cn.md)
 
 可以参照下面代码创建 Producer，并写入日志。
 
@@ -19,7 +19,7 @@ with Producer(config) as producer:
     producer.writer("my-project", "my-logstore").send({"message": "hello"})
 ```
 
-创建 Producer 或配置时可能抛出 `ValueError` 或 `OverflowError`。
+创建 Producer 或配置失败时，请参照[错误处理](errors_cn.md)。
 
 ## 配置凭证
 

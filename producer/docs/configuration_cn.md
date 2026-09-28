@@ -1,6 +1,6 @@
 # Rust 配置参考
 
-[English](configuration.md) · [快速开始](quickstart_cn.md) · [使用示例](examples_cn.md)
+[English](configuration.md) · [快速开始](quickstart_cn.md) · [使用示例](examples_cn.md) · [错误处理](errors_cn.md)
 
 可以参照下面代码创建 Producer，并写入日志。
 
@@ -24,7 +24,7 @@ writer.send(log!("message": "hello"))?;
 producer.close_blocking()?;
 ```
 
-配置不正确时，创建 Producer 会返回 `ProducerError::Config`。
+创建失败时，请参照[错误处理](errors_cn.md)。
 
 ## 配置凭证
 

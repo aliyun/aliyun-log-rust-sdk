@@ -1,6 +1,6 @@
 # Python configuration
 
-[简体中文](configuration_cn.md) · [Quick start](quickstart.md) · [Examples](examples.md)
+[简体中文](configuration_cn.md) · [Quick start](quickstart.md) · [Examples](examples.md) · [Error handling](errors.md)
 
 Use the following code to create a Producer and send logs.
 
@@ -19,7 +19,7 @@ with Producer(config) as producer:
     producer.writer("my-project", "my-logstore").send({"message": "hello"})
 ```
 
-Creating a Producer or its configuration may raise `ValueError` or `OverflowError`.
+If creating a Producer or its configuration fails, see [error handling](errors.md).
 
 ## Credentials
 

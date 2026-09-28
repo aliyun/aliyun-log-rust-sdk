@@ -1,6 +1,6 @@
 # Rust usage examples
 
-[简体中文](examples_cn.md) · [Quick start](quickstart.md) · [Configuration](configuration.md)
+[简体中文](examples_cn.md) · [Quick start](quickstart.md) · [Configuration](configuration.md) · [Error handling](errors.md)
 
 These examples use the Producer and writer created in the [quick start](quickstart.md).
 
@@ -119,7 +119,6 @@ match writer.send(log!("message": "hello")) {
 
 The second send can still fail and needs to be handled by your application. If you use a callback, pass it again when retrying.
 In async code, use an async wait such as `tokio::time::sleep`.
-If you receive `ProducerError::Closed`, check whether the Producer was closed too early.
 
 ## Send logs sooner
 

@@ -1,6 +1,6 @@
 # Rust 使用示例
 
-[English](examples.md) · [快速开始](quickstart_cn.md) · [配置参考](configuration_cn.md)
+[English](examples.md) · [快速开始](quickstart_cn.md) · [配置参考](configuration_cn.md) · [错误处理](errors_cn.md)
 
 以下示例使用[快速开始](quickstart_cn.md)中创建的 Producer 和 writer。
 
@@ -119,7 +119,6 @@ match writer.send(log!("message": "hello")) {
 
 第二次发送仍可能失败，需要由应用处理。使用回调时，重试也要传入回调。
 异步代码应使用异步等待，例如 `tokio::time::sleep`。
-如果收到 `ProducerError::Closed`，请检查是否已提前关闭 Producer。
 
 ## 让日志更快发出
 

@@ -10,6 +10,7 @@ retries, and callbacks to check delivery results.
 | [Quick start](docs/quickstart.md) | Install, create a producer, send a log and close |
 | [Usage examples](docs/examples.md) | Callbacks, flush, shutdown, timestamps and multiple logstores |
 | [Configuration](docs/configuration.md) | Options, defaults and valid values |
+| [Error handling](docs/errors.md) | Error types, meanings, and suggested actions |
 | [Metrics](docs/metrics.md) | Track successful sends, failures, and log size |
 
 The Producer starts when you create it. Reuse it and its writers while your application runs, and close it before exiting.
