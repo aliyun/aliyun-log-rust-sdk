@@ -1,32 +1,19 @@
 # Producer metrics
 
-Install a [`metrics::Recorder`](https://docs.rs/metrics/latest/metrics/trait.Recorder.html)
-before `Producer::create(config)`. The producer registers counter handles once
-and reuses them across workers. Handles created without a Recorder remain no-op.
-The application owns export; no producer metrics configuration or polling API is needed.
+[简体中文](metrics_cn.md) · [Overview](../README.md)
 
-All instances contribute to the same process-wide counters. There are no destination,
-rejection-reason, latency or queue-depth metrics.
+To collect metrics, set up a `metrics::Recorder` before creating the Producer.
+Use the exporter of your choice to send them to your monitoring system. Without a Recorder, no metrics are collected.
 
-| Counter | Labels | Meaning |
-| --- | --- | --- |
-| `sls_producer_accepted_logs_total` | none | Logs admitted locally, including logs that later fail delivery |
-| `sls_producer_delivered_logs_total` | `result=success` or `result=failed` | Logs with a terminal delivery outcome; each log is counted once, regardless of retries |
-| `sls_producer_delivered_raw_bytes_total` | none | Estimated original bytes in successfully delivered logs; each log is counted once, regardless of retries |
-| `sls_producer_rejected_submissions_total` | none | Send calls rejected because the producer is closed or admission capacity is unavailable |
+Counters combine all Producers in the process. They do not separate projects or Logstores.
 
-The raw-byte counter uses the bytes unit; all other counters use the count unit.
-It reuses the existing admission size estimate: UTF-8 key/value bytes plus 16 bytes
-per log. It excludes group metadata, compression and HTTP overhead, and requires no
-additional size calculation. Failed and rejected logs do not add to this byte count.
+| Counter | What it tells you |
+| --- | --- |
+| `sls_producer_accepted_logs_total` | Logs accepted by the Producer, including those that later fail to send. |
+| `sls_producer_delivered_logs_total` | Logs that succeeded (`result=success`) or failed (`result=failed`). Retried logs count once. |
+| `sls_producer_delivered_raw_bytes_total` | Estimated size in bytes of successfully delivered logs, before compression. Retried logs count once. |
+| `sls_producer_rejected_submissions_total` | Sends rejected because the Producer is full or closed. These logs are not included in delivery failures. |
 
-Rejected submissions are not accepted logs and do not contribute to delivery failures. Invalid destination names fail at writer creation
-and do not count as rejected submissions. Callback panics are logged and do not change
-the delivery outcome.
+The byte estimate is the UTF-8 size of all keys and values, plus 16 bytes per log. Use it to estimate log volume, not network traffic.
 
-The existing IO runtime samples admission and delivery totals once per second and
-once before close completes, including failure cleanup. Values can lag when the runtime
-is busy. Flush does not force a sample. Sampling continues while close waits for
-callbacks; even producers that close within one interval publish their final counts.
-Rejections are recorded immediately, including sends attempted after close.
-Internal lifecycle and capacity accounting is independent of these metrics.
+Delivery counters update about once per second and once more before close finishes. They may take longer to update under load.

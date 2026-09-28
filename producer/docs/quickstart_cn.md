@@ -40,7 +40,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-执行 `cargo run --release`。创建 Producer 后即已启动。
-
-`send` 成功表示日志已在本地接收；退出前调用 `close_blocking()`，等待已接收日志的投递完成。
-长期运行的应用应复用 Producer 和 writer，在退出时关闭。
+执行 `cargo run --release`。Producer 创建后自动启动，日志在后台发送。

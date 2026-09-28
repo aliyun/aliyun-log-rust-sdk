@@ -2,72 +2,67 @@
 
 [简体中文](examples_cn.md) · [Quick start](quickstart.md) · [Configuration](configuration.md)
 
-These snippets use the `producer` and `writer` created in the quick start.
-Put fallible snippets in a function returning `Result<(), ProducerError>` and close
-the producer when the application shuts down.
+These examples use the Producer and writer created in the [quick start](quickstart.md).
 
-## Four ways to send
+## Choose a send method
 
-| Method | source / topic | Delivery callback |
-| --- | --- | --- |
-| `send(log)` | Empty defaults | No |
-| `send_with_options(log, options)` | Custom | No |
-| `send_with_callback(log, callback)` | Empty defaults | Yes |
-| `send_with_options_and_callback(log, options, callback)` | Custom | Yes |
+| What you need | Method |
+| --- | --- |
+| Send a log | `send(log)` |
+| Set the source and topic | `send_with_options(log, options)` |
+| Receive the delivery result | `send_with_callback(log, callback)` |
+| Set the source, topic, and callback | `send_with_options_and_callback(log, options, callback)` |
 
-All four methods accept the log or return an error immediately, without waiting for delivery.
+## Label the source and topic
 
-## Send logs with metadata or an explicit timestamp
-
-`log!("key": "value", ...)` uses the current timestamp.
-`log!(time = event_time; "key": "value", ...)` accepts a `std::time::SystemTime`
-and keeps only whole seconds. Keys and values accept string literals or owned strings; order and duplicate keys are preserved. Each send submits one log. `source` and `topic` are optional and default to empty strings.
+Use `source` to identify the machine and `topic` to group logs by purpose, such as orders:
 
 ```rust
 use aliyun_log_producer::{log, SendOptions};
-use std::time::{Duration, SystemTime};
 
-writer.send(log!("message": "hello"))?;
 writer.send_with_options(
     log!("level": "INFO", "message": "order created"),
     SendOptions::default().with_source("web-01").with_topic("orders"),
 )?;
+```
+
+## Set the log time
+
+`log!("key": "value", ...)` uses the current time.
+Use `log!(time = event_time; "key": "value", ...)` to set the log time.
+
+```rust
+use aliyun_log_producer::log;
+use std::time::{Duration, SystemTime};
 
 let event_time = SystemTime::now() - Duration::from_secs(60);
 writer.send(log!(time = event_time; "message": "imported log"))?;
 ```
 
-For an existing collection of pairs, use the functions `log(contents)` or `log_at(event_time, contents)`.
+## Check whether logs were delivered
 
-## Receive delivery results
-
-Use `send_with_callback` when you need to know whether a log was delivered.
-Capture an identifier in the closure to associate the result with your application.
+A log may not have reached SLS when `send` returns. Use `send_with_callback` to receive the delivery result:
 
 ```rust
 use aliyun_log_producer::log;
 
-let order_id = String::from("order-123");
-writer.send_with_callback(log!("order_id": order_id.clone()), move |result| {
+writer.send_with_callback(log!("message": "hello"), |result| {
     match result {
-        Ok(()) => println!("{order_id}: delivered"),
-        Err(error) => eprintln!("{order_id}: {error}; request_id={:?}", error.request_id()),
+        Ok(()) => println!("delivered"),
+        Err(error) => eprintln!("failed: {error}; request_id={:?}", error.request_id()),
     }
 })?;
 ```
 
-Each accepted log's callback runs once after success or terminal failure. A send
-rejected immediately does not invoke the callback. Callbacks execute serially in
-the background and may run before `send_with_callback` returns; their order is not
-guaranteed. Keep callbacks short. Closures must be `Send + 'static`.
-Do not call flush or close on this producer from its callback.
+If the send method returns an error, the log was not accepted and its callback will not run.
+Callbacks run one at a time in the background. Keep them short so they do not delay other callbacks. Do not close or flush the same Producer from a callback.
 
-## Flush during use; close at shutdown
+## Wait for logs and close the Producer
 
-| Operation | Waits for | Accepts later sends? |
-| --- | --- | --- |
-| `flush_blocking()` / `flush().await` | Final delivery of logs accepted before the call; not their callbacks | Yes |
-| `close_blocking()` / `close().await` | Pending delivery, callbacks and shutdown | No |
+| What you need | Method |
+| --- | --- |
+| Wait for earlier logs to finish sending, then keep sending | `flush_blocking()`; does not wait for callbacks |
+| Wait for logs and callbacks before exiting | `close_blocking()`; stops further sends |
 
 ```rust
 producer.flush_blocking()?;
@@ -75,7 +70,7 @@ producer.flush_blocking()?;
 producer.close_blocking()?;
 ```
 
-In async code, use the async methods instead of blocking the calling thread:
+In async functions, use `flush().await` and `close().await`:
 
 ```rust
 producer.flush().await?;
@@ -83,15 +78,11 @@ producer.flush().await?;
 producer.close().await?;
 ```
 
-Both operations wait without a caller-specified timeout. Delivery is still bounded
-by `max_attempts` and `delivery_timeout`. Successful flush/close means waiting completed;
-individual delivery failures are reported through callbacks. Close can be called again
-safely, and includes flushing. Ensure callbacks return, and do not hold locks they need
-while waiting. Explicitly close before process exit; dropping handles is not a substitute.
+There is no need to flush before closing. Neither operation reports individual delivery failures; use a callback to check results.
 
 ## Send to multiple logstores
 
-Use one producer for destinations that share an endpoint and credentials:
+Logstores with the same SLS endpoint and credentials can share a Producer:
 
 ```rust
 use aliyun_log_producer::log;
@@ -104,14 +95,11 @@ orders.send(entry.clone())?;
 audit.send(entry)?;
 ```
 
-Writers can be cloned and shared across threads. Closing the producer (or any clone)
-stops sends from all its writers. Use separate producers for different endpoints or credentials.
+Threads can use clones of the same writer. You do not need a separate Producer for each thread.
 
-## Handle a full producer
+## Handle a full queue
 
-`send` does not wait for capacity. `ProducerError::EnqueueFull` and
-`ProducerError::Closed` return ownership of the original log. The application decides
-whether to wait, save it elsewhere or report the rejection. For example, retry once:
+If you receive `ProducerError::EnqueueFull`, you can retrieve the log and retry later. This example waits 50 ms and retries once:
 
 ```rust
 use aliyun_log_producer::{log, ProducerError};
@@ -123,17 +111,15 @@ match writer.send(log!("message": "hello")) {
         std::thread::sleep(Duration::from_millis(50));
         writer.send(log)?;
     }
-    Err(error) => return Err(error),
+    Err(error) => return Err(error.into()),
 }
 ```
 
-The second send can also fail; this example propagates that error. A closed producer
-cannot be reopened. When using callbacks, pass a new callback for a retried send.
-For async applications, use your executor's delay instead of `std::thread::sleep`.
+The second send can still fail and needs to be handled by your application. If you use a callback, pass it again when retrying.
+In async code, use an async wait such as `tokio::time::sleep`.
+If you receive `ProducerError::Closed`, check whether the Producer was closed too early.
 
-## Reduce batching delay
+## Send logs sooner
 
-For latency-sensitive logs, set `with_linger(Duration::from_millis(100))` on the
-configuration before creation. Smaller values can produce more requests. `Duration::ZERO`
-disables the wait for more logs; it does not make send wait for delivery.
-See the [configuration table](configuration.md) for batch and retry settings.
+Set `with_linger(Duration::from_millis(100))` to wait up to 100 ms for more logs, or `Duration::ZERO` to skip the wait.
+Shorter waits can mean more requests. See the [configuration table](configuration.md) for other options.

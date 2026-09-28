@@ -4,8 +4,7 @@
 
 ## 1. Install
 
-Use ordinary CPython 3.8+ in a virtual environment. To install from this repository,
-run the following from its root (requires a Rust toolchain and platform build dependencies):
+Use Python (CPython) 3.8 or later. Installing from source requires Rust and system build tools. Run this command from the repository root:
 
 ```sh
 python -m pip install ./bindings/python
@@ -38,8 +37,4 @@ writer.send({"level": "INFO", "message": "another log"}, time=now)
 producer.close()
 ```
 
-Run `python send.py`. Creating the producer starts it automatically.
-
-`send` uses the current timestamp by default; returning successfully means the log
-was accepted locally. Call `close()` before exit to wait for pending delivery.
-In long-running applications, reuse the producer and writer and close at shutdown.
+Run `python send.py`. The Producer starts automatically and sends logs in the background.

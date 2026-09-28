@@ -40,8 +40,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-Run `cargo run --release`. Creating the producer starts it automatically.
-
-A successful `send` means the log was accepted locally. Call `close_blocking()`
-before exit to wait for pending delivery. In long-running applications, reuse the
-producer and writer and close at shutdown.
+Run `cargo run --release`. The Producer starts automatically and sends logs in the background.

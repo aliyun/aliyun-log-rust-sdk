@@ -4,8 +4,7 @@
 
 ## 1. 安装
 
-使用普通 CPython 3.8+，建议在虚拟环境中安装。从源码安装时，在仓库根目录执行以下命令
-（需要 Rust 工具链和平台所需的编译依赖）：
+使用 Python（CPython）3.8 或更高版本。从源码安装需要 Rust 和系统编译工具。在仓库根目录执行：
 
 ```sh
 python -m pip install ./bindings/python
@@ -38,8 +37,4 @@ writer.send({"level": "INFO", "message": "another log"}, time=now)
 producer.close()
 ```
 
-执行 `python send.py`。创建 Producer 后即已启动。
-
-`send` 默认使用当前时间，成功返回表示日志已在本地接收。
-程序退出前调用 `close()`，等待已接收日志的投递完成。
-长期运行的应用应复用 Producer 和 writer，在退出时关闭。
+执行 `python send.py`。Producer 创建后自动启动，日志在后台发送。

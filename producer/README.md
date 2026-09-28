@@ -3,22 +3,17 @@
 [简体中文](README_CN.md)
 
 Send logs to Alibaba Cloud Simple Log Service (SLS), with automatic batching,
-retries and optional delivery callbacks.
+retries, and callbacks to check delivery results.
 
 | Guide | Contents |
 | --- | --- |
 | [Quick start](docs/quickstart.md) | Install, create a producer, send a log and close |
 | [Usage examples](docs/examples.md) | Callbacks, flush, shutdown, timestamps and multiple logstores |
 | [Configuration](docs/configuration.md) | Options, defaults and valid values |
-| [Metrics](docs/metrics.md) | Metric names, units and recording semantics |
+| [Metrics](docs/metrics.md) | Track successful sends, failures, and log size |
 
-Create a producer for your endpoint and credentials, then obtain a writer for each
-project/logstore. Creation starts the producer; no separate `start()` call is needed.
-Reuse the producer and writers for subsequent sends.
+The Producer starts when you create it. Reuse it and its writers while your application runs, and close it before exiting.
 
-A successful `send` means the log was accepted locally. Use a callback to learn the
-final delivery result. Before exiting, close the producer to wait for pending logs
-and callbacks. Delivery order is not guaranteed, and retries may produce duplicates.
-Pending logs are not persisted to disk.
+Logs are sent in the background. Use a callback to check whether delivery succeeded. Logs may arrive out of order or more than once. Pending logs may be lost if the application crashes.
 
 [Python guide](../bindings/python/README.md)
