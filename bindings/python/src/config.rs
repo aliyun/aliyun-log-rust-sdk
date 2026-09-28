@@ -55,71 +55,27 @@ impl ProducerConfig {
             0,
             ConfigError::new_err,
         )?;
+        let endpoint: String = args.required("endpoint")?;
         let user_agent: Option<String> = args.optional("user_agent")?;
+        let access_key_id: Option<String> = args.optional("access_key_id")?;
+        let access_key_secret: Option<String> = args.optional("access_key_secret")?;
+        let security_token: Option<String> = args.optional("security_token")?;
+        let credentials_provider: Option<Bound<'_, PyAny>> =
+            args.optional("credentials_provider")?;
         let compression = args.default("compression", "zstd".to_owned())?;
-        Self::from_values(
-            args.required("endpoint")?,
-            args.optional("access_key_id")?,
-            args.optional("access_key_secret")?,
-            args.optional("security_token")?,
-            args.optional("credentials_provider")?,
-            user_agent.as_deref(),
-            &compression,
-            args.default("generate_pack_id", true)?,
-            args.optional("batch_size_threshold")?,
-            args.optional("batch_count_threshold")?,
-            args.optional("linger")?,
-            args.optional("buffer_bytes")?,
-            args.optional("processing_workers")?,
-            args.optional("callback_capacity")?,
-            args.optional("max_attempts")?,
-            args.optional("base_backoff")?,
-            args.optional("max_backoff")?,
-            args.optional("delivery_timeout")?,
-        )
-    }
-
-    fn __repr__(&self) -> String {
-        // Rust's Debug deliberately redacts all authentication data.
-        format!("{:?}", self.inner)
-    }
-}
-
-impl ProducerConfig {
-    #[allow(clippy::too_many_arguments)]
-    fn from_values(
-        endpoint: String,
-        access_key_id: Option<String>,
-        access_key_secret: Option<String>,
-        security_token: Option<String>,
-        credentials_provider: Option<Bound<'_, PyAny>>,
-        user_agent: Option<&str>,
-        compression: &str,
-        generate_pack_id: bool,
-        batch_size_threshold: Option<usize>,
-        batch_count_threshold: Option<usize>,
-        linger: Option<f64>,
-        buffer_bytes: Option<usize>,
-        processing_workers: Option<usize>,
-        callback_capacity: Option<usize>,
-        max_attempts: Option<u32>,
-        base_backoff: Option<f64>,
-        max_backoff: Option<f64>,
-        delivery_timeout: Option<f64>,
-    ) -> PyResult<Self> {
-        let compression = match compression {
+        let compression = match compression.as_str() {
             "zstd" => Compression::Zstd,
             "lz4" => Compression::Lz4,
             _ => return Err(ConfigError::new_err("compression must be 'zstd' or 'lz4'")),
         };
         let mut inner = RustConfig::default()
             .with_endpoint(endpoint)
-            .with_user_agent(user_agent.unwrap_or(concat!(
+            .with_user_agent(user_agent.as_deref().unwrap_or(concat!(
                 "aliyun-log-python-producer/",
                 env!("CARGO_PKG_VERSION")
             )))
             .with_compression(compression)
-            .with_generate_pack_id(generate_pack_id);
+            .with_generate_pack_id(args.default("generate_pack_id", true)?);
         let credentials_provider = credentials_provider.map(Bound::unbind);
         inner = if credentials_provider.is_some() {
             if access_key_id.is_some() || access_key_secret.is_some() || security_token.is_some() {
@@ -141,12 +97,12 @@ impl ProducerConfig {
         // Omitted options inherit the Rust defaults rather than a second set of defaults.
         macro_rules! option {
             ($value:ident, $setter:ident) => {
-                if let Some(value) = $value {
+                if let Some(value) = args.optional(stringify!($value))? {
                     inner = inner.$setter(value);
                 }
             };
             ($value:ident, $setter:ident, duration) => {
-                if let Some(value) = $value {
+                if let Some(value) = args.optional(stringify!($value))? {
                     inner = inner.$setter(duration(value, stringify!($value))?);
                 }
             };
@@ -165,5 +121,10 @@ impl ProducerConfig {
             inner,
             credentials_provider,
         })
+    }
+
+    fn __repr__(&self) -> String {
+        // Rust's Debug deliberately redacts all authentication data.
+        format!("{:?}", self.inner)
     }
 }
