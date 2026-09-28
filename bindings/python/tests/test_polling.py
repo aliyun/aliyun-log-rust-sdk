@@ -2,7 +2,7 @@ import threading
 
 import pytest
 
-from aliyun_log_producer import Producer, ProducerConfig, ProducerError, Log
+from aliyun_log_producer import Producer, ProducerConfig, Log
 
 
 def test_delivery_uses_one_python_thread(service):
@@ -24,19 +24,6 @@ def test_delivery_uses_one_python_thread(service):
     assert not producer._thread.is_alive()
     assert producer._thread.name == "sls-producer-poll"
     producer.close()
-
-
-def test_reentrant_waits_raise_instead_of_deadlocking(make_producer):
-    producer, writer = make_producer()
-    checked = threading.Event()
-    def callback(error):
-        for wait in (producer.close, producer.flush):
-            with pytest.raises(ProducerError, match="callback"):
-                wait()
-        checked.set()
-    writer.send(Log([]), on_delivery=callback)
-    producer.close()
-    assert checked.is_set()
 
 
 def test_callback_capacity_reserved_at_admission(make_producer):

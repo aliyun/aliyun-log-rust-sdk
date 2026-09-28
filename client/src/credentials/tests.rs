@@ -501,3 +501,109 @@ async fn refresh_check_jitter_is_bounded_and_varies_between_callers() {
     };
     assert!(!permanent.needs_refresh());
 }
+
+#[test]
+fn external_snapshots_are_shared_consistent_and_redacted() {
+    let credentials = ExternalManagedCredentials::new(
+        Credentials::new("initial-id", "initial-secret")
+            .unwrap()
+            .with_security_token("initial-token"),
+    );
+    let initial = credentials.get();
+    let writer = credentials.clone();
+    let reader = credentials.clone();
+    let barrier = std::sync::Barrier::new(2);
+    std::thread::scope(|scope| {
+        scope.spawn(|| {
+            barrier.wait();
+            for i in 0..2000 {
+                let value = format!("version-{i}");
+                writer.set(
+                    Credentials::new(&value, &value)
+                        .unwrap()
+                        .with_security_token(&value),
+                );
+            }
+        });
+        barrier.wait();
+        for _ in 0..2000 {
+            let snapshot = reader.get();
+            if snapshot.access_key_id() != "initial-id" {
+                assert_eq!(snapshot.access_key_id(), snapshot.access_key_secret());
+                assert_eq!(snapshot.security_token(), Some(snapshot.access_key_id()));
+            }
+        }
+    });
+    assert_eq!(credentials.get().access_key_id(), "version-1999");
+    assert_eq!(initial.access_key_id(), "initial-id");
+    assert_eq!(initial.access_key_secret(), "initial-secret");
+    assert_eq!(initial.security_token(), Some("initial-token"));
+    let debug = format!("{credentials:?}");
+    assert!(!debug.contains("version-"));
+    assert!(!debug.contains("initial-"));
+}
+
+#[tokio::test]
+async fn external_configs_read_current_snapshot_without_cache_or_expiration_policy() {
+    use crate::{Client, Config, FromConfig};
+    let credentials = ExternalManagedCredentials::new(keys("initial"));
+    let config = || {
+        Config::builder()
+            .endpoint("localhost")
+            .external_managed_credentials(credentials.clone())
+            .build()
+            .unwrap()
+    };
+    let first = config();
+    let cloned = first.clone();
+    let independent = config();
+    let old = first.credentials.get().await.unwrap();
+    // An absent expiration must not cause the initial snapshot to be cached forever.
+    credentials.set(keys("updated"));
+    for config in [&first, &cloned, &independent] {
+        assert!(Arc::ptr_eq(
+            &config.credentials.get().await.unwrap(),
+            &credentials.get()
+        ));
+        assert_eq!(
+            config.credentials.get().await.unwrap().access_key_id(),
+            "updated"
+        );
+    }
+    assert_eq!(old.access_key_id(), "initial");
+    // Expiration is metadata in external mode: neither get nor set initiates renewal.
+    credentials.set(keys("external-expired").with_expiration(SystemTime::UNIX_EPOCH));
+    assert_eq!(
+        first.credentials.get().await.unwrap().access_key_id(),
+        "external-expired"
+    );
+    drop(Client::from_config(first).unwrap());
+    drop(cloned);
+    drop(independent);
+    credentials.set(keys("after-client-drop"));
+    assert_eq!(credentials.get().access_key_id(), "after-client-drop");
+}
+
+#[test]
+fn external_config_rejects_other_sources_in_either_setter_order() {
+    use crate::Config;
+    let credentials = ExternalManagedCredentials::new(keys("external"));
+    let base = || Config::builder().endpoint("localhost");
+    for external_first in [false, true] {
+        for source in 0..3 {
+            let mut builder = base();
+            if external_first {
+                builder = builder.external_managed_credentials(credentials.clone());
+            }
+            builder = match source {
+                0 => builder.access_key("id", "secret"),
+                1 => builder.sts("id", "secret", "token"),
+                _ => builder.credentials_provider(StaticCredentialsProvider::new(keys("provider"))),
+            };
+            if !external_first {
+                builder = builder.external_managed_credentials(credentials.clone());
+            }
+            assert!(builder.build().is_err());
+        }
+    }
+}

@@ -10,7 +10,8 @@ use pyo3::{
 use crate::{
     callback::Callback,
     config::{duration, ProducerConfig},
-    error::{producer_error, ProducerError},
+    credentials::ExternalCredentials,
+    error::producer_error,
 };
 
 /// An immutable snapshot of a log, preserving content order and duplicate keys.
@@ -71,8 +72,21 @@ pub(crate) struct NativeBaseProducer {
 #[pymethods]
 impl NativeBaseProducer {
     #[new]
-    fn new(py: Python<'_>, config: &ProducerConfig) -> PyResult<Self> {
-        let config = config.inner.clone();
+    #[pyo3(signature = (config, *, external_credentials))]
+    fn new(
+        py: Python<'_>,
+        config: &ProducerConfig,
+        external_credentials: Option<&ExternalCredentials>,
+    ) -> PyResult<Self> {
+        if config.credentials_provider.is_some() != external_credentials.is_some() {
+            return Err(PyValueError::new_err(
+                "external_credentials must be provided for a credentials_provider and must be None for static credentials",
+            ));
+        }
+        let mut config = config.inner.clone();
+        if let Some(credentials) = external_credentials {
+            config = config.with_external_managed_credentials(credentials.inner.clone());
+        }
         py.detach(move || RustProducer::create(config))
             .map(|inner| Self { inner })
             .map_err(producer_error)
@@ -91,18 +105,8 @@ impl NativeBaseProducer {
             .map_err(producer_error)
     }
 
-    fn _check_wait(&self) -> PyResult<()> {
-        if crate::credentials::is_fetching() {
-            return Err(ProducerError::new_err(
-                "cannot wait for a producer inside get_credentials()",
-            ));
-        }
-        Ok(())
-    }
-
     /// Wait for delivery of previously admitted logs; callbacks may still be running.
     fn _flush(&self, py: Python<'_>) -> PyResult<()> {
-        self._check_wait()?;
         py.detach(|| self.inner.flush_blocking())
             .map_err(producer_error)
     }
@@ -116,12 +120,11 @@ impl NativeBaseProducer {
     }
 
     fn _wait_closed(&self, py: Python<'_>) -> PyResult<()> {
-        self._check_wait()?;
         py.detach(|| self.inner.wait_closed_blocking())
             .map_err(producer_error)
     }
 
-    /// Waiting is detached; an entire batch executes under this Python thread's GIL.
+    /// Wait for events, then dispatch their callbacks on the calling Python thread.
     fn _poll(&self, py: Python<'_>, timeout: f64) -> PyResult<usize> {
         let timeout = duration(timeout, "timeout")?;
         let batch = py

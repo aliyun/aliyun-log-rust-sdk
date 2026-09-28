@@ -1,6 +1,8 @@
 use std::{fmt, time::Duration};
 
-use aliyun_log_rust_sdk::{Config, CredentialsProvider, SharedCredentialsProvider};
+use aliyun_log_rust_sdk::{
+    Config, CredentialsProvider, ExternalManagedCredentials, SharedCredentialsProvider,
+};
 
 use crate::{Compression, ProducerError};
 
@@ -46,6 +48,7 @@ pub struct ProducerConfig {
 enum Authentication {
     AccessKey { id: String, secret: String },
     Provider(SharedCredentialsProvider),
+    External(ExternalManagedCredentials),
 }
 
 impl fmt::Debug for Authentication {
@@ -53,6 +56,7 @@ impl fmt::Debug for Authentication {
         f.write_str(match self {
             Self::AccessKey { .. } => "AccessKey([redacted])",
             Self::Provider(_) => "CredentialsProvider(..)",
+            Self::External(_) => "ExternalManagedCredentials(..)",
         })
     }
 }
@@ -135,6 +139,19 @@ impl ProducerConfig {
         self
     }
 
+    /// Internal integration support for application-managed credentials.
+    ///
+    /// Unstable and subject to change. Not intended for downstream application use.
+    /// Replaces previously configured credentials; renewal belongs to the caller.
+    #[doc(hidden)]
+    pub fn with_external_managed_credentials(
+        mut self,
+        credentials: ExternalManagedCredentials,
+    ) -> Self {
+        self.authentication = Some(Authentication::External(credentials));
+        self
+    }
+
     pub(crate) fn client_config(&self) -> Result<Config, ProducerError> {
         let builder = Config::builder()
             .endpoint(&self.endpoint)
@@ -144,6 +161,9 @@ impl ProducerConfig {
             Some(Authentication::AccessKey { id, secret }) => builder.access_key(id, secret),
             Some(Authentication::Provider(provider)) => {
                 builder.credentials_provider(provider.clone())
+            }
+            Some(Authentication::External(credentials)) => {
+                builder.external_managed_credentials(credentials.clone())
             }
             None => {
                 return Err(ProducerError::Config(

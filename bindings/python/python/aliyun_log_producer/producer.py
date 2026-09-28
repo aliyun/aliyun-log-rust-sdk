@@ -4,7 +4,8 @@ import sys
 import threading
 import weakref
 
-from ._native import _BaseProducer, ProducerError
+from ._native import _BaseProducer
+from .credentials import _CredentialsManager
 
 
 # GraalPy terminates daemon threads at context shutdown. They must first leave
@@ -28,11 +29,14 @@ if sys.implementation.name == "graalpy":
     atexit.register(_stop_graalpy_threads)
 
 
-def _poll(native, stop):
+def _poll(native, stop, credentials):
     # This function owns no reference to the public Producer wrapper.
     try:
         while not stop.is_set() and not native._is_closed():
-            native._poll(0.1)
+            if credentials is not None:
+                credentials.refresh_if_due()
+            if not stop.is_set():
+                native._poll(0.1)
     finally:
         if sys.implementation.name == "graalpy":
             with _graalpy_lock:
@@ -42,26 +46,31 @@ def _poll(native, stop):
 class Producer:
     """Thread-safe producer with automatic batching, retries and callbacks.
 
-    Construction validates local configuration and starts background workers;
-    it makes no service requests or credential fetches. Obtain writers with
-    writer(project, logstore). Successful send means local admission; use
-    on_delivery to receive the final delivery outcome. Callbacks run serially
-    on one Python-created thread, and retries may duplicate logs.
+    Obtain writers with writer(project, logstore). Successful send means local
+    admission; on_delivery reports the final outcome. Delivery callbacks run
+    serially and may send more logs. Retries may duplicate logs.
 
-    flush waits for prior delivery only. close stops every writer and waits
-    indefinitely for delivery, callbacks and shutdown. Neither aggregates
-    individual delivery failures. Use a with statement or explicitly close
-    before exit. Waiting releases the GIL and requires no asyncio loop.
-
-    Runtime failures derive from ProducerError; invalid configuration raises
-    ValueError (out-of-range integers may raise OverflowError).
+    Use a with statement or explicitly close before exit. Calling send, flush or
+    close from user __del__ methods or finalizers is unsupported.
     """
     def __init__(self, config):
-        self._native = _BaseProducer(config)
+        """Obtain initial dynamic credentials and start background workers.
+
+        Initial credential fetch runs once on the calling thread; failure raises
+        ProducerError. Credentials are cached and refreshed automatically.
+        Invalid configuration raises ValueError; out-of-range integers may raise
+        OverflowError. No asyncio loop is required.
+        """
+        provider = config._credentials_provider
+        self._credentials = _CredentialsManager(provider) if provider is not None else None
+        self._native = _BaseProducer(
+            config,
+            external_credentials=self._credentials.credentials if self._credentials is not None else None,
+        )
         stop = threading.Event()
         self._join_lock = threading.Lock()
         self._thread = threading.Thread(
-            target=_poll, args=(self._native, stop),
+            target=_poll, args=(self._native, stop, self._credentials),
             name="sls-producer-poll", daemon=True,
         )
         if sys.implementation.name == "graalpy":
@@ -85,27 +94,31 @@ class Producer:
         """
         return self._native._writer(project, logstore, self)
 
-    def _check_wait(self):
-        self._native._check_wait()
-        if threading.current_thread() is self._thread:
-            raise ProducerError("cannot wait for this producer from its callback")
-
     def flush(self):
-        """Wait for delivery accepted before this call; callbacks may still run."""
-        self._check_wait()
+        """Wait for prior delivery; later sends may continue.
+
+        Does not wait for callbacks or report individual delivery failures.
+        Calling from this producer's callback, credentials provider, or a user
+        finalizer is unsupported and may deadlock.
+        """
         self._native._flush()
 
     def close(self):
-        """Stop admission, drain callbacks on the poll thread, and join it."""
-        self._check_wait()
+        """Stop all writers and wait for delivery, callbacks and shutdown.
+
+        Safe to call repeatedly. Does not report individual delivery failures.
+        Callbacks must return for close to complete. Calling from this producer's
+        callback, credentials provider, or a user finalizer is unsupported and
+        may deadlock.
+        """
         self._native._begin_close()
         try:
-            self._native._wait_closed()  # Releases the GIL during the wait.
+            self._native._wait_closed()
         finally:
             # GraalPy 25.0's Thread.join cannot safely stop the same thread
             # concurrently. Serialize only joining, after native shutdown.
             with self._join_lock:
-                self._thread.join()  # Also releases the GIL while waiting.
+                self._thread.join()
 
     def __enter__(self):
         return self

@@ -46,6 +46,28 @@ These credentials are not refreshed automatically. Use dynamic credentials if yo
 Set `credentials_provider` to use dynamic credentials. Producer calls its `get_credentials()` method to obtain credentials.
 For temporary credentials, set `expires_at` to the expiration time in Unix seconds so the SDK can refresh them automatically.
 
+Creating a `Producer` attempts to fetch credentials once; failure raises
+`ProducerError`. The SDK caches credentials, automatically refreshes them before
+`expires_at`, and retries failed refreshes while retaining the previous credentials.
+Without `expires_at`, credentials are cached without automatic refresh.
+
+Provider I/O must have finite timeouts: a blocked refresh delays delivery callbacks
+and `close()`. Providers shared by multiple producers must support concurrent calls.
+
+## Callback and finalizer restrictions
+
+Delivery callbacks may call `writer.send()`. Calling the same producer's `flush()`
+or `close()` from its delivery callback or `get_credentials()` is unsupported:
+these calls can wait on the thread currently executing them and deadlock. Perform
+flush and shutdown from application code after returning from the callback.
+
+Calling `writer.send()`, `Producer.flush()` or `Producer.close()` from user-defined
+`__del__` methods or finalizers (including `weakref.finalize` callbacks) is
+unsupported. This also applies to callback objects: releasing the SDK's reference
+can trigger their finalization. Use `with Producer(...)` or explicitly call
+`close()` during normal application shutdown; do not rely on finalizers for delivery.
+Unsupported calls have no guaranteed outcome or specific exception.
+
 ## Producer configuration options
 
 | Argument | Type | Default | Meaning and range |

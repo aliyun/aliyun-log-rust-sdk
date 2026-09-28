@@ -31,12 +31,17 @@ mod threaded;
 mod types;
 mod writer;
 
+/// Unstable internal integration API; subject to change.
+#[doc(hidden)]
+pub use aliyun_log_rust_sdk::ExternalManagedCredentials;
 pub use aliyun_log_rust_sdk::{Credentials, CredentialsError, CredentialsProvider};
 pub use aliyun_log_sdk_protobuf::Log;
 pub use compression::Compression;
 pub use config::ProducerConfig;
 pub use delivery_error::DeliveryError;
 pub use error::ProducerError;
+/// Unstable internal integration API; subject to change.
+#[doc(hidden)]
 pub use events::EventBatch;
 pub use logs::{log, log_at, log_now, IntoLog};
 pub use threaded::ThreadedProducer;
@@ -79,10 +84,14 @@ impl Drop for Frontend {
 }
 
 /// Low-level producer for bindings and application-owned event dispatch.
+///
+/// Unstable and subject to change. Not intended for downstream application use.
+///
 /// Prefer [`Producer`] for automatic callbacks. `poll_batch` retrieves
 /// events without running callbacks. To shut down, call `begin_close`, keep consuming
 /// and dispatching batches until `is_closed`, then obtain the result with `wait_closed`.
 /// Stopping admission through any clone affects every writer and clone.
+#[doc(hidden)]
 #[derive(Clone)]
 pub struct BaseProducer {
     inner: Arc<Frontend>,

@@ -4,8 +4,6 @@ use aliyun_log_producer::{Compression, ProducerConfig as RustConfig};
 use aliyun_log_rust_sdk::static_credentials_provider;
 use pyo3::{exceptions::PyValueError, prelude::*};
 
-use crate::credentials::PythonCredentialsProvider;
-
 pub(crate) fn duration(seconds: f64, name: &str) -> PyResult<Duration> {
     Duration::try_from_secs_f64(seconds).map_err(|_| {
         PyValueError::new_err(format!(
@@ -18,6 +16,8 @@ pub(crate) fn duration(seconds: f64, name: &str) -> PyResult<Duration> {
 #[pyclass(frozen, module = "aliyun_log_producer._native")]
 pub(crate) struct ProducerConfig {
     pub(crate) inner: RustConfig,
+    #[pyo3(get, name = "_credentials_provider")]
+    pub(crate) credentials_provider: Option<Py<PyAny>>,
 }
 
 #[pymethods]
@@ -63,13 +63,14 @@ impl ProducerConfig {
             )))
             .with_compression(compression)
             .with_generate_pack_id(generate_pack_id);
-        inner = if let Some(provider) = credentials_provider {
+        let credentials_provider = credentials_provider.map(Bound::unbind);
+        inner = if credentials_provider.is_some() {
             if access_key_id.is_some() || access_key_secret.is_some() || security_token.is_some() {
                 return Err(PyValueError::new_err(
                     "credentials_provider cannot be combined with access_key_id, access_key_secret or security_token",
                 ));
             }
-            inner.with_credentials_provider(PythonCredentialsProvider::new(provider)?)
+            inner
         } else {
             let (Some(id), Some(secret)) = (access_key_id, access_key_secret) else {
                 return Err(PyValueError::new_err(
@@ -103,7 +104,10 @@ impl ProducerConfig {
         option!(base_backoff, with_base_backoff, duration);
         option!(max_backoff, with_max_backoff, duration);
         option!(delivery_timeout, with_delivery_timeout, duration);
-        Ok(Self { inner })
+        Ok(Self {
+            inner,
+            credentials_provider,
+        })
     }
 
     fn __repr__(&self) -> String {

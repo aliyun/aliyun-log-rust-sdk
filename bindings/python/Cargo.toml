@@ -19,7 +19,6 @@ vendored-openssl = ["dep:openssl"]
 aliyun-log-producer = { path = "../../producer" }
 aliyun-log-rust-sdk = { path = "../../client" }
 pyo3 = "0.29.2"
-tokio = { version = "1.44", features = ["sync"] }
 
 # Release Linux wheels bundle OpenSSL instead of depending on the build host's
 # libssl ABI. This opt-in feature does not change the Rust client's defaults.

@@ -7,13 +7,11 @@ mod producer;
 
 use pyo3::prelude::*;
 
-// Python callbacks require the GIL. A free-threaded CPython build enables its
-// GIL when importing this module; no-GIL execution/subinterpreters are unsupported.
 #[pymodule(gil_used = true)]
 fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<config::ProducerConfig>()?;
     m.add_class::<credentials::Credentials>()?;
-    m.add_class::<credentials::CredentialsCompletion>()?;
+    m.add_class::<credentials::ExternalCredentials>()?;
     m.add_class::<producer::Log>()?;
     m.add_class::<producer::NativeBaseProducer>()?;
     m.add_class::<producer::LogstoreWriter>()?;

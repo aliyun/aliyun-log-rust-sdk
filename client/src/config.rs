@@ -1,7 +1,10 @@
-use crate::credentials::{CredentialsCache, DEFAULT_FETCH_TIMEOUT};
+use crate::credentials::{CredentialsCache, CredentialsSource, DEFAULT_FETCH_TIMEOUT};
 use crate::utils::is_empty_or_none;
 use crate::ConfigError;
-use crate::{static_credentials_provider, CredentialsProvider, SharedCredentialsProvider};
+use crate::{
+    static_credentials_provider, CredentialsProvider, ExternalManagedCredentials,
+    SharedCredentialsProvider,
+};
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::sync::Arc;
@@ -26,7 +29,7 @@ use std::sync::Arc;
 pub struct Config {
     pub(crate) endpoint: Endpoint,
     pub(crate) user_agent: http::HeaderValue,
-    pub(crate) credentials: Arc<CredentialsCache>,
+    pub(crate) credentials: Arc<CredentialsSource>,
     pub(crate) connection_timeout: std::time::Duration,
     pub(crate) request_timeout: std::time::Duration,
     pub(crate) max_retry: u32,
@@ -73,6 +76,7 @@ pub struct ConfigBuilder {
     access_key_secret: Option<String>,
     security_token: Option<String>,
     credentials_provider: Option<SharedCredentialsProvider>,
+    external_managed_credentials: Option<ExternalManagedCredentials>,
     credentials_fetch_timeout: Option<std::time::Duration>,
     connection_timeout: Option<std::time::Duration>,
     request_timeout: Option<std::time::Duration>,
@@ -163,7 +167,7 @@ impl ConfigBuilder {
     /// # Errors
     ///
     /// [`Self::build`] rejects configurations combining a provider with
-    /// [`Self::access_key`] or [`Self::sts`].
+    /// another credentials source, such as [`Self::access_key`] or [`Self::sts`].
     ///
     /// # Examples
     ///
@@ -180,6 +184,16 @@ impl ConfigBuilder {
     /// ```
     pub fn credentials_provider(mut self, provider: impl CredentialsProvider) -> Self {
         self.credentials_provider = Some(SharedCredentialsProvider::new(provider));
+        self
+    }
+
+    /// Internal integration support for application-managed credentials.
+    ///
+    /// Unstable and subject to change. Not intended for downstream application use.
+    /// Cannot be combined with access keys, STS configuration, or a provider.
+    #[doc(hidden)]
+    pub fn external_managed_credentials(mut self, credentials: ExternalManagedCredentials) -> Self {
+        self.external_managed_credentials = Some(credentials);
         self
     }
 
@@ -255,16 +269,22 @@ impl ConfigBuilder {
                 "credentials fetch timeout must be nonzero"
             )));
         }
-        let provider = match self.credentials_provider {
-            Some(provider) => provider,
-            None => SharedCredentialsProvider::new(
-                static_credentials_provider(
-                    self.access_key_id.unwrap(),
-                    self.access_key_secret.unwrap(),
-                    self.security_token,
-                )
-                .map_err(|_| ConfigError::InvalidAccessKey)?,
-            ),
+        let credentials = match self.external_managed_credentials {
+            Some(credentials) => CredentialsSource::External(credentials),
+            None => {
+                let provider = match self.credentials_provider {
+                    Some(provider) => provider,
+                    None => SharedCredentialsProvider::new(
+                        static_credentials_provider(
+                            self.access_key_id.unwrap(),
+                            self.access_key_secret.unwrap(),
+                            self.security_token,
+                        )
+                        .map_err(|_| ConfigError::InvalidAccessKey)?,
+                    ),
+                };
+                CredentialsSource::Cached(CredentialsCache::new(provider, fetch_timeout))
+            }
         };
 
         let user_agent = self
@@ -275,7 +295,7 @@ impl ConfigBuilder {
         Ok(Config {
             endpoint,
             user_agent,
-            credentials: Arc::new(CredentialsCache::new(provider, fetch_timeout)),
+            credentials: Arc::new(credentials),
             request_timeout,
             connection_timeout,
             max_retry: self.max_retry.unwrap_or(DEFAULT_MAX_RETRY),
@@ -316,6 +336,18 @@ impl ConfigBuilder {
     }
 
     fn validate_credentials(&self) -> Result<(), ConfigError> {
+        if self.external_managed_credentials.is_some() {
+            if self.credentials_provider.is_some()
+                || self.access_key_id.is_some()
+                || self.access_key_secret.is_some()
+                || self.security_token.is_some()
+            {
+                return Err(ConfigError::Other(anyhow::anyhow!(
+                    "external_managed_credentials cannot be combined with credentials_provider, access_key or sts"
+                )));
+            }
+            return Ok(());
+        }
         if self.credentials_provider.is_some() {
             if self.access_key_id.is_some()
                 || self.access_key_secret.is_some()

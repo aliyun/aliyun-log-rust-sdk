@@ -75,6 +75,9 @@ impl Drop for PollLease {
 /// Owned batch, safe to fetch while a language runtime lock is released and then
 /// dispatch after reacquiring it. Retaining the batch blocks other polls and holds its callbacks pending shutdown.
 /// Dropping an undispatched batch requeues deliveries without executing user code.
+///
+/// Unstable and subject to change. Not intended for downstream application use.
+#[doc(hidden)]
 pub struct EventBatch {
     events: Vec<CallbackJob>,
     lease: PollLease,

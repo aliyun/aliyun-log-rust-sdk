@@ -1421,7 +1421,7 @@ async fn actual_client_posts_both_codecs_and_producer_owns_http_retry_policy() {
                 "<html>unrecognized error response</html>",
             ),
         ] {
-            check_http_compression(compression, response, false).await;
+            check_http_compression(compression, response, false, None).await;
         }
     }
 }
@@ -1430,6 +1430,7 @@ async fn check_http_compression(
     compression: Compression,
     first_response: (&'static str, &'static str),
     terminal_error: bool,
+    external: Option<ExternalManagedCredentials>,
 ) {
     use tokio::{
         io::{AsyncReadExt, AsyncWriteExt},
@@ -1437,6 +1438,7 @@ async fn check_http_compression(
     };
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
+    let updates = external.clone();
     let server = tokio::spawn(async move {
         let mut requests = Vec::new();
         for attempt in 0..2 {
@@ -1473,7 +1475,17 @@ async fn check_http_compression(
                 Compression::Lz4 => "custom-producer/1.0",
             };
             assert_eq!(header("user-agent:"), expected_agent);
-            assert!(header("authorization:").starts_with("log test-id:"));
+            if let Some(updates) = &updates {
+                assert!(header("authorization:").starts_with(&format!("log external-{attempt}:")));
+                assert_eq!(header("x-acs-security-token:"), format!("token-{attempt}"));
+                updates.set(
+                    Credentials::new("external-1", "secret-1")
+                        .unwrap()
+                        .with_security_token("token-1"),
+                );
+            } else {
+                assert!(header("authorization:").starts_with("log test-id:"));
+            }
             while received.len() < header_end + length {
                 let mut buffer = [0; 4096];
                 let count = stream.read(&mut buffer).await.unwrap();
@@ -1505,6 +1517,10 @@ async fn check_http_compression(
         producer_config.with_user_agent("custom-producer/1.0")
     } else {
         producer_config
+    };
+    let producer_config = match external {
+        Some(credentials) => producer_config.with_external_managed_credentials(credentials),
+        None => producer_config,
     };
     let producer = ThreadedProducer::create(producer_config).unwrap();
     let (tx, rx) = oneshot::channel();
@@ -1664,6 +1680,7 @@ async fn malformed_responses_retry_then_report_invalid_response() {
             "<html>unrecognized error response</html>",
         ),
         true,
+        None,
     )
     .await;
 }
@@ -1819,3 +1836,22 @@ impl ThreadedProducer {
     }
 }
 mod polling;
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn external_credentials_config_rotates_across_threaded_producer_retries() {
+    let credentials = ExternalManagedCredentials::new(
+        Credentials::new("external-0", "secret-0")
+            .unwrap()
+            .with_security_token("token-0"),
+    );
+    check_http_compression(
+        Compression::Zstd,
+        (
+            "503 Service Unavailable",
+            r#"{"errorCode":"ServerBusy","errorMessage":"retry"}"#,
+        ),
+        false,
+        Some(credentials),
+    )
+    .await;
+}

@@ -14,7 +14,7 @@
 //!   from configurable environment variables.
 //! * Implement [`CredentialsProvider`] to connect another credentials source.
 //!
-//! The SDK manages credential refreshes. The existing [`ConfigBuilder::access_key`]
+//! The SDK manages provider refreshes. The existing [`ConfigBuilder::access_key`]
 //! and [`ConfigBuilder::sts`] methods remain available for fixed credentials.
 
 mod client;
@@ -30,6 +30,9 @@ pub use self::error::*;
 pub use async_trait::async_trait;
 pub use client::*;
 pub use config::{Config, ConfigBuilder};
+/// Unstable internal integration API; subject to change.
+#[doc(hidden)]
+pub use credentials::ExternalManagedCredentials;
 pub use credentials::{
     ecs_ram_role_credentials_provider, environment_credentials_provider,
     environment_credentials_provider_builder, static_credentials_provider, Credentials,
