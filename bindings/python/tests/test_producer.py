@@ -9,6 +9,7 @@ import weakref
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
+from aliyun_log_producer import ConfigError, InvalidArgumentError
 
 from aliyun_log_producer import (
     DeliveryError,
@@ -46,11 +47,11 @@ def test_log_snapshot_and_ranges():
     with pytest.raises(AttributeError):
         log.time = 10
     for invalid in [-1, 2**32]:
-        with pytest.raises(OverflowError):
+        with pytest.raises(InvalidArgumentError):
             Log([], time=invalid)
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidArgumentError):
         Log([], time_ns=1000000000)
-    with pytest.raises(TypeError):
+    with pytest.raises(InvalidArgumentError):
         Log([("key", 12)])
 
 
@@ -381,7 +382,7 @@ def test_writer_outlives_python_producer(service):
 def test_invalid_config(option, value):
     options = dict(endpoint="cn-hangzhou.log.aliyuncs.com", access_key_id="test-id", access_key_secret="test-secret")
     options[option] = value
-    with pytest.raises(ValueError):
+    with pytest.raises(ConfigError):
         Producer(ProducerConfig(**options))
 
 
@@ -448,16 +449,16 @@ def test_dict_send_accepts_current_time_empty_and_keyword_input(make_producer):
 
 
 @pytest.mark.parametrize("contents,options,error", [
-    ({"key": 123}, {}, TypeError),
-    ({123: "value"}, {}, TypeError),
-    ([("key", "value")], {}, TypeError),
-    ({}, {"time": -1}, OverflowError),
-    ({}, {"time": 2**32}, OverflowError),
-    ({}, {"time_ns": -1}, OverflowError),
-    ({}, {"time_ns": 1_000_000_000}, ValueError),
-    ({}, {"time": 1.5}, TypeError),
-    (Log([], time=0), {"time": 1}, TypeError),
-    (Log([], time=0), {"time_ns": 1}, TypeError),
+    ({"key": 123}, {}, InvalidArgumentError),
+    ({123: "value"}, {}, InvalidArgumentError),
+    ([("key", "value")], {}, InvalidArgumentError),
+    ({}, {"time": -1}, InvalidArgumentError),
+    ({}, {"time": 2**32}, InvalidArgumentError),
+    ({}, {"time_ns": -1}, InvalidArgumentError),
+    ({}, {"time_ns": 1_000_000_000}, InvalidArgumentError),
+    ({}, {"time": 1.5}, InvalidArgumentError),
+    (Log([], time=0), {"time": 1}, InvalidArgumentError),
+    (Log([], time=0), {"time_ns": 1}, InvalidArgumentError),
 ])
 def test_dict_send_invalid_input_is_not_admitted(make_producer, service, contents, options, error):
     producer, writer = make_producer()

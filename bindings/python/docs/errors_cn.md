@@ -11,13 +11,12 @@
 | --- | --- |
 | `EnqueueFullError` | 队列已满，未接收这条日志。可以稍后重试。 |
 | `ProducerClosedError` | Producer 正在关闭或已关闭。请停止发送，或创建新的 Producer。 |
+| `ConfigError` | 配置错误，包括缺失或未知参数、类型、范围和配置冲突。 |
+| `InvalidArgumentError` | 日志、凭据快照、目标名称或其他方法参数不正确。 |
 | `ProducerError` | Producer 启动或运行出错，也可能是调用方式不正确。根据错误信息排查。 |
-| `ValueError` | 配置、日志时间或目标名称等参数不正确。根据错误信息检查参数。 |
-| `TypeError` | 参数类型不正确。根据错误信息调整传入的值。 |
-| `OverflowError` | 数值超出支持的范围。检查传入的数值。 |
 
-可以通过 `except ProducerError` 统一捕获 `EnqueueFullError` 和 `ProducerClosedError`。
-这两种发送异常不会触发回调。重试示例见[使用示例](examples_cn.md)。
+以上异常均继承 `ProducerError`。使用 `except ProducerError` 可统一捕获 SDK 的同步调用失败，
+也可以按需捕获具体子类。发送被拒绝时不会触发投递回调。重试示例见[使用示例](examples_cn.md)。
 
 ## 回调中的发送错误
 
@@ -35,3 +34,7 @@
 
 `message` 是错误说明；SLS 返回的错误还可通过 `error_code`、`http_status` 和 `request_id` 查看详情。
 排查服务错误时，建议保留错误信息和 request ID。权限或身份验证失败属于 `server`。
+
+创建 Producer 时首次获取凭据失败会抛出 `ProducerError`。后台刷新失败保留缓存凭据并重试，
+不会直接通过 `on_delivery` 通知。应用 callback 自身抛出的异常保留原类型，由
+`sys.unraisablehook` 报告。

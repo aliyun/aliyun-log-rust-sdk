@@ -11,13 +11,13 @@ Flush and close do not report individual delivery failures.
 | --- | --- |
 | `EnqueueFullError` | The queue is full and the log was not accepted. Retry later. |
 | `ProducerClosedError` | Producer is closing or closed. Stop sending or create a new Producer. |
+| `ConfigError` | Invalid configuration, including missing/unknown arguments, types, ranges and conflicting options. |
+| `InvalidArgumentError` | Invalid log, credentials snapshot, destination or other method arguments. |
 | `ProducerError` | Producer could not start, encountered an error, or was used incorrectly. Check the error message. |
-| `ValueError` | Invalid configuration, log time, destination name, or other argument. Check the error message. |
-| `TypeError` | An argument has the wrong type. Check the error message and supplied value. |
-| `OverflowError` | A number is outside the supported range. Check the supplied value. |
 
-Use `except ProducerError` to catch both `EnqueueFullError` and `ProducerClosedError`.
-These two send errors do not trigger a callback. See the [usage examples](examples.md) for a retry example.
+All exceptions above derive from `ProducerError`. Use `except ProducerError` to catch
+synchronous SDK failures, or catch a specific subclass when needed.
+Rejected sends do not trigger a delivery callback. See the [usage examples](examples.md) for a retry example.
 
 ## Delivery errors in callbacks
 
@@ -35,3 +35,8 @@ These two send errors do not trigger a callback. See the [usage examples](exampl
 
 `message` describes the error. For SLS errors, inspect `error_code`, `http_status`, and `request_id` for more details.
 Keep the error message and request ID for troubleshooting. Authentication and permission failures are `server` errors.
+
+Initial credential fetch failures raise `ProducerError` during construction. Background
+refresh failures retain the cached credentials and retry; they are not delivered
+directly through `on_delivery`. Exceptions raised by application callbacks retain
+their original types and are reported through `sys.unraisablehook`.

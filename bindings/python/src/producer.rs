@@ -2,16 +2,16 @@ use aliyun_log_producer::{
     BaseProducer as RustProducer, Log as RustLog, LogstoreWriter as RustWriter, SendOptions,
 };
 use pyo3::{
-    exceptions::{PyTypeError, PyValueError},
     prelude::*,
-    types::PyDict,
+    types::{PyDict, PyTuple},
 };
 
 use crate::{
+    arguments::Arguments,
     callback::Callback,
     config::{duration, ProducerConfig},
     credentials::ExternalCredentials,
-    error::producer_error,
+    error::{producer_error, ConfigError, InvalidArgumentError},
 };
 
 /// An immutable snapshot of a log, preserving content order and duplicate keys.
@@ -23,25 +23,20 @@ pub(crate) struct Log {
 #[pymethods]
 impl Log {
     #[new]
-    #[pyo3(signature = (contents, *, time=None, time_ns=None))]
-    fn new(
-        contents: Vec<(String, String)>,
-        time: Option<u32>,
-        time_ns: Option<u32>,
-    ) -> PyResult<Self> {
-        if time_ns.is_some_and(|value| value >= 1_000_000_000) {
-            return Err(PyValueError::new_err("time_ns must be in [0, 999999999]"));
-        }
-        let mut inner = time
-            .map(RustLog::from_unixtime)
-            .unwrap_or_else(aliyun_log_producer::log_now);
-        if let Some(ns) = time_ns {
-            inner.set_time_ns(ns);
-        }
-        for (key, value) in contents {
-            inner.add_content_kv(key, value);
-        }
-        Ok(Self { inner })
+    #[pyo3(signature = (*args, **kwargs), text_signature = "(contents, *, time=None, time_ns=None)")]
+    fn new(args: &Bound<'_, PyTuple>, kwargs: Option<&Bound<'_, PyDict>>) -> PyResult<Self> {
+        let args = Arguments::new(
+            args,
+            kwargs,
+            &["contents", "time", "time_ns"],
+            1,
+            InvalidArgumentError::new_err,
+        )?;
+        Self::from_values(
+            args.required("contents")?,
+            args.optional("time")?,
+            args.optional("time_ns")?,
+        )
     }
 
     #[getter]
@@ -64,6 +59,30 @@ impl Log {
     }
 }
 
+impl Log {
+    fn from_values(
+        contents: Vec<(String, String)>,
+        time: Option<u32>,
+        time_ns: Option<u32>,
+    ) -> PyResult<Self> {
+        if time_ns.is_some_and(|value| value >= 1_000_000_000) {
+            return Err(InvalidArgumentError::new_err(
+                "time_ns must be in [0, 999999999]",
+            ));
+        }
+        let mut inner = time
+            .map(RustLog::from_unixtime)
+            .unwrap_or_else(aliyun_log_producer::log_now);
+        if let Some(ns) = time_ns {
+            inner.set_time_ns(ns);
+        }
+        for (key, value) in contents {
+            inner.add_content_kv(key, value);
+        }
+        Ok(Self { inner })
+    }
+}
+
 #[pyclass(name = "_BaseProducer", frozen, module = "aliyun_log_producer._native")]
 pub(crate) struct NativeBaseProducer {
     inner: RustProducer,
@@ -79,7 +98,7 @@ impl NativeBaseProducer {
         external_credentials: Option<&ExternalCredentials>,
     ) -> PyResult<Self> {
         if config.credentials_provider.is_some() != external_credentials.is_some() {
-            return Err(PyValueError::new_err(
+            return Err(ConfigError::new_err(
                 "external_credentials must be provided for a credentials_provider and must be None for static credentials",
             ));
         }
@@ -147,21 +166,29 @@ impl LogstoreWriter {
     /// Admit a Log or a snapshot of a string dictionary immediately.
     /// time/time_ns apply only to dictionary input. Admission failure raises
     /// without invoking on_delivery.
-    #[pyo3(signature = (log, *, time=None, time_ns=None, source="", topic="", on_delivery=None))]
-    #[allow(clippy::too_many_arguments)]
+    #[pyo3(signature = (*args, **kwargs), text_signature = "($self, log, *, time=None, time_ns=None, source='', topic='', on_delivery=None)")]
     fn send(
         &self,
         py: Python<'_>,
-        log: &Bound<'_, PyAny>,
-        time: Option<u32>,
-        time_ns: Option<u32>,
-        source: &str,
-        topic: &str,
-        on_delivery: Option<Bound<'_, PyAny>>,
+        args: &Bound<'_, PyTuple>,
+        kwargs: Option<&Bound<'_, PyDict>>,
     ) -> PyResult<()> {
+        let args = Arguments::new(
+            args,
+            kwargs,
+            &["log", "time", "time_ns", "source", "topic", "on_delivery"],
+            1,
+            InvalidArgumentError::new_err,
+        )?;
+        let log: Bound<'_, PyAny> = args.required("log")?;
+        let time: Option<u32> = args.optional("time")?;
+        let time_ns: Option<u32> = args.optional("time_ns")?;
+        let source = args.default("source", String::new())?;
+        let topic = args.default("topic", String::new())?;
+        let on_delivery: Option<Bound<'_, PyAny>> = args.optional("on_delivery")?;
         let log = if let Ok(existing) = log.cast::<Log>() {
             if time.is_some() || time_ns.is_some() {
-                return Err(PyTypeError::new_err(
+                return Err(InvalidArgumentError::new_err(
                     "time and time_ns are only supported for dict input; set them when creating Log",
                 ));
             }
@@ -169,13 +196,24 @@ impl LogstoreWriter {
         } else if let Ok(contents) = log.cast::<PyDict>() {
             let contents = contents
                 .iter()
-                .map(|(key, value)| Ok((key.extract::<String>()?, value.extract::<String>()?)))
+                .map(|(key, value)| {
+                    Ok((
+                        key.extract::<String>().map_err(|_| {
+                            InvalidArgumentError::new_err("log keys must be strings")
+                        })?,
+                        value.extract::<String>().map_err(|_| {
+                            InvalidArgumentError::new_err("log values must be strings")
+                        })?,
+                    ))
+                })
                 .collect::<PyResult<Vec<_>>>()?;
             // Construct owned Rust data directly: no temporary Python Log object
             // or second clone before enqueueing. Preserve dictionary order.
-            Log::new(contents, time, time_ns)?.inner
+            Log::from_values(contents, time, time_ns)?.inner
         } else {
-            return Err(PyTypeError::new_err("log must be a Log or dict[str, str]"));
+            return Err(InvalidArgumentError::new_err(
+                "log must be a Log or dict[str, str]",
+            ));
         };
         let callback = on_delivery.map(Callback::new);
         let writer = &self.inner;

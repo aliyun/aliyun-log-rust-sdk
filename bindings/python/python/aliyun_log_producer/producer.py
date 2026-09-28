@@ -1,11 +1,28 @@
 """Python-owned event dispatch over the Rust BaseProducer."""
 import atexit
+import functools
+import inspect
 import sys
 import threading
 import weakref
 
-from ._native import _BaseProducer
+from ._native import _BaseProducer, ProducerConfig, ConfigError, InvalidArgumentError
 from .credentials import _CredentialsManager
+
+
+def _arguments(error_type):
+    """Translate call binding failures without catching application exceptions."""
+    def decorate(function):
+        signature = inspect.signature(function)
+        @functools.wraps(function)
+        def call(*args, **kwargs):
+            try:
+                signature.bind(*args, **kwargs)
+            except TypeError as error:
+                raise error_type(str(error)) from None
+            return function(*args, **kwargs)
+        return call
+    return decorate
 
 
 # GraalPy terminates daemon threads at context shutdown. They must first leave
@@ -53,14 +70,16 @@ class Producer:
     Use a with statement or explicitly close before exit. Calling send, flush or
     close from user __del__ methods or finalizers is unsupported.
     """
+    @_arguments(ConfigError)
     def __init__(self, config):
         """Obtain initial dynamic credentials and start background workers.
 
         Initial credential fetch runs once on the calling thread; failure raises
         ProducerError. Credentials are cached and refreshed automatically.
-        Invalid configuration raises ValueError; out-of-range integers may raise
-        OverflowError. No asyncio loop is required.
+        Invalid configuration raises ConfigError. No asyncio loop is required.
         """
+        if not isinstance(config, ProducerConfig):
+            raise ConfigError("config must be a ProducerConfig")
         provider = config._credentials_provider
         self._credentials = _CredentialsManager(provider) if provider is not None else None
         self._native = _BaseProducer(
@@ -86,14 +105,18 @@ class Producer:
             self._native._begin_close()
             raise
 
+    @_arguments(InvalidArgumentError)
     def writer(self, project, logstore):
         """Get a thread-safe writer without checking remote existence or permissions.
 
-        Invalid destination names raise ValueError. All writers share this
+        Invalid destination names raise InvalidArgumentError. All writers share this
         producer's endpoint, credentials and lifecycle.
         """
+        if not isinstance(project, str) or not isinstance(logstore, str):
+            raise InvalidArgumentError("project and logstore must be strings")
         return self._native._writer(project, logstore, self)
 
+    @_arguments(InvalidArgumentError)
     def flush(self):
         """Wait for prior delivery; later sends may continue.
 
@@ -103,6 +126,7 @@ class Producer:
         """
         self._native._flush()
 
+    @_arguments(InvalidArgumentError)
     def close(self):
         """Stop all writers and wait for delivery, callbacks and shutdown.
 

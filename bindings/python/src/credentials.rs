@@ -1,5 +1,9 @@
+use crate::{arguments::Arguments, error::InvalidArgumentError};
 use aliyun_log_rust_sdk::{Credentials as RustCredentials, ExternalManagedCredentials};
-use pyo3::{exceptions::PyValueError, prelude::*};
+use pyo3::{
+    prelude::*,
+    types::{PyDict, PyTuple},
+};
 use std::time::{Duration, SystemTime};
 
 /// One immutable, internally consistent credentials snapshot.
@@ -11,15 +15,26 @@ pub(crate) struct Credentials {
 #[pymethods]
 impl Credentials {
     #[new]
-    #[pyo3(signature = (*, access_key_id, access_key_secret, security_token=None, expires_at=None))]
-    fn new(
-        access_key_id: String,
-        access_key_secret: String,
-        security_token: Option<String>,
-        expires_at: Option<u64>,
-    ) -> PyResult<Self> {
+    #[pyo3(signature = (*args, **kwargs), text_signature = "(*, access_key_id, access_key_secret, security_token=None, expires_at=None)")]
+    fn new(args: &Bound<'_, PyTuple>, kwargs: Option<&Bound<'_, PyDict>>) -> PyResult<Self> {
+        let args = Arguments::new(
+            args,
+            kwargs,
+            &[
+                "access_key_id",
+                "access_key_secret",
+                "security_token",
+                "expires_at",
+            ],
+            0,
+            InvalidArgumentError::new_err,
+        )?;
+        let access_key_id: String = args.required("access_key_id")?;
+        let access_key_secret: String = args.required("access_key_secret")?;
+        let security_token: Option<String> = args.optional("security_token")?;
+        let expires_at: Option<u64> = args.optional("expires_at")?;
         let mut inner = RustCredentials::new(access_key_id, access_key_secret)
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            .map_err(|e| InvalidArgumentError::new_err(e.to_string()))?;
         if let Some(token) = security_token {
             inner = inner.with_security_token(token);
         }
@@ -27,7 +42,9 @@ impl Credentials {
             let expiration = SystemTime::UNIX_EPOCH
                 .checked_add(Duration::from_secs(expiration))
                 .ok_or_else(|| {
-                    PyValueError::new_err("expires_at is outside the supported timestamp range")
+                    InvalidArgumentError::new_err(
+                        "expires_at is outside the supported timestamp range",
+                    )
                 })?;
             inner = inner.with_expiration(expiration);
         }

@@ -1,16 +1,19 @@
 use aliyun_log_producer::{DeliveryError as RustDeliveryError, ProducerError as RustProducerError};
-use pyo3::{
-    create_exception,
-    exceptions::{PyRuntimeError, PyValueError},
-    prelude::*,
-};
+use pyo3::{create_exception, exceptions::PyRuntimeError, prelude::*};
 
 create_exception!(aliyun_log_producer, ProducerError, PyRuntimeError);
+create_exception!(aliyun_log_producer, ConfigError, ProducerError);
+create_exception!(aliyun_log_producer, InvalidArgumentError, ProducerError);
 create_exception!(aliyun_log_producer, EnqueueFullError, ProducerError);
 create_exception!(aliyun_log_producer, ProducerClosedError, ProducerError);
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let py = m.py();
+    m.add("ConfigError", py.get_type::<ConfigError>())?;
+    m.add(
+        "InvalidArgumentError",
+        py.get_type::<InvalidArgumentError>(),
+    )?;
     m.add("EnqueueFullError", py.get_type::<EnqueueFullError>())?;
     m.add("ProducerClosedError", py.get_type::<ProducerClosedError>())?;
     m.add("ProducerError", py.get_type::<ProducerError>())?;
@@ -20,9 +23,8 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
 pub(crate) fn producer_error(error: RustProducerError) -> PyErr {
     let message = error.to_string();
     match error {
-        RustProducerError::Config(_) | RustProducerError::InvalidInput { .. } => {
-            PyValueError::new_err(message)
-        }
+        RustProducerError::Config(_) => ConfigError::new_err(message),
+        RustProducerError::InvalidInput { .. } => InvalidArgumentError::new_err(message),
         RustProducerError::Closed { .. } => ProducerClosedError::new_err(message),
         RustProducerError::EnqueueFull { .. } => EnqueueFullError::new_err(message),
         _ => ProducerError::new_err(message),

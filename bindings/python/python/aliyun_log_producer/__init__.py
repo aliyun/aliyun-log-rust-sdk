@@ -1,6 +1,8 @@
 """Thread-safe SLS producer backed by the standalone Rust producer."""
 
 from ._native import (
+    ConfigError,
+    InvalidArgumentError,
     Credentials,
     DeliveryError,
     EnqueueFullError,
@@ -15,6 +17,8 @@ from .credentials import CredentialsProvider
 from .producer import Producer
 
 __all__ = [
+    "ConfigError",
+    "InvalidArgumentError",
     "Credentials",
     "CredentialsProvider",
     "DeliveryError",

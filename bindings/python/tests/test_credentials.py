@@ -6,6 +6,7 @@ import time
 import weakref
 
 import pytest
+from aliyun_log_producer import ConfigError, InvalidArgumentError
 
 from aliyun_log_producer import Credentials, Producer, ProducerConfig, ProducerError
 
@@ -33,12 +34,12 @@ def test_credentials_snapshot_fields_and_redacted_repr():
 
 
 @pytest.mark.parametrize("kwargs,error", [
-    ({"access_key_id": ""}, ValueError), ({"access_key_secret": ""}, ValueError),
-    ({"expires_at": -1}, OverflowError), ({"expires_at": 2**64}, OverflowError),
-    ({"expires_at": 2**64 - 1}, ValueError),
-    ({"expires_at": float("nan")}, TypeError), ({"expires_at": float("inf")}, TypeError),
-    ({"expires_at": 1700000000.0}, TypeError), ({"expires_at": 1700000000.25}, TypeError),
-    ({"expires_at": "1700000000"}, TypeError),
+    ({"access_key_id": ""}, InvalidArgumentError), ({"access_key_secret": ""}, InvalidArgumentError),
+    ({"expires_at": -1}, InvalidArgumentError), ({"expires_at": 2**64}, InvalidArgumentError),
+    ({"expires_at": 2**64 - 1}, InvalidArgumentError),
+    ({"expires_at": float("nan")}, InvalidArgumentError), ({"expires_at": float("inf")}, InvalidArgumentError),
+    ({"expires_at": 1700000000.0}, InvalidArgumentError), ({"expires_at": 1700000000.25}, InvalidArgumentError),
+    ({"expires_at": "1700000000"}, InvalidArgumentError),
 ])
 def test_invalid_snapshot(kwargs, error):
     options = dict(access_key_id="id", access_key_secret="secret")
@@ -61,7 +62,7 @@ def test_expiration_integer_roundtrip(expiration):
     {"credentials_provider": object(), "security_token": "token"},
 ])
 def test_provider_config_requires_one_credentials_source(options):
-    with pytest.raises(ValueError):
+    with pytest.raises(ConfigError):
         ProducerConfig(endpoint="example.com", **options)
 
 
@@ -77,7 +78,7 @@ def test_native_constructor_rejects_mismatched_credentials_mode(dynamic):
                {"access_key_id": "id", "access_key_secret": "secret"})
     settings = ProducerConfig(endpoint="example.com", **options)
     external = None if dynamic else _ExternalCredentials(snapshot())
-    with pytest.raises(ValueError, match="external_credentials"):
+    with pytest.raises(ConfigError, match="external_credentials"):
         _BaseProducer(settings, external_credentials=external)
 
 

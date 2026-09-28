@@ -1,4 +1,5 @@
 //! Python adaptation only; all delivery and scheduling belong to the Rust producer.
+mod arguments;
 mod callback;
 mod config;
 mod credentials;
