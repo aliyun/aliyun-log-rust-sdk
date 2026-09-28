@@ -72,7 +72,7 @@ fn config() -> ProducerConfig {
 fn start(
     config: ProducerConfig,
     targets: Vec<Arc<dyn runtime::Transport>>,
-) -> (ThreadedProducer, Vec<LogstoreWriter>) {
+) -> (Producer, Vec<LogstoreWriter>) {
     start_with_inflight_limit(config, targets, None)
 }
 
@@ -80,7 +80,7 @@ fn start_with_inflight_limit(
     config: ProducerConfig,
     targets: Vec<Arc<dyn runtime::Transport>>,
     limit: Option<usize>,
-) -> (ThreadedProducer, Vec<LogstoreWriter>) {
+) -> (Producer, Vec<LogstoreWriter>) {
     config.validate().unwrap();
     let owner = NEXT_OWNER.fetch_add(1, Ordering::Relaxed);
     let names: Vec<_> = (0..targets.len())
@@ -103,7 +103,7 @@ fn start_with_inflight_limit(
         Ok(Arc::new(TestTransports(targets)))
     })
     .unwrap();
-    let producer = ThreadedProducer::from_base(BaseProducer {
+    let producer = Producer::from_base(BaseProducer {
         inner: Arc::new(Frontend { shared, tx }),
     })
     .unwrap();
@@ -1436,7 +1436,7 @@ fn zero_worker_budgets_are_rejected_before_starting_runtime() {
             "callback_capacity",
         ),
     ] {
-        let error = ThreadedProducer::create(config).err().unwrap();
+        let error = Producer::create(config).err().unwrap();
         assert!(matches!(error, ProducerError::Config(message) if message.contains(name)));
     }
 }
@@ -1560,7 +1560,7 @@ async fn check_http_compression(
         Some(credentials) => producer_config.with_external_managed_credentials(credentials),
         None => producer_config,
     };
-    let producer = ThreadedProducer::create(producer_config).unwrap();
+    let producer = Producer::create(producer_config).unwrap();
     let (tx, rx) = oneshot::channel();
     producer
         .writer("127", "store")
@@ -1803,7 +1803,7 @@ async fn destinations_created_after_start_route_through_one_transport() {
     );
     let (tx, rx) = mpsc::channel(16);
     runtime::launch(shared.clone(), rx, move || Ok(transport)).unwrap();
-    let producer = ThreadedProducer::from_base(BaseProducer {
+    let producer = Producer::from_base(BaseProducer {
         inner: Arc::new(Frontend { shared, tx }),
     })
     .unwrap();
@@ -1851,7 +1851,7 @@ enum TestWaitError {
 }
 
 // Bounded waits are a test harness concern; the public lifecycle API has no deadline.
-impl ThreadedProducer {
+impl Producer {
     async fn test_flush(&self, deadline: Duration) -> Result<(), TestWaitError> {
         tokio::time::timeout(deadline, self.flush())
             .await

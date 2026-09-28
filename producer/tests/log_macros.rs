@@ -47,3 +47,11 @@ fn automatic_and_empty_forms_work_outside_the_crate() {
     assert_eq!(*empty.time_ns(), None);
     assert!(empty.contents().is_empty());
 }
+
+#[test]
+fn explicit_time_clamps_to_the_wire_timestamp_range() {
+    let before_epoch = log!(time = UNIX_EPOCH - Duration::from_secs(1););
+    let after_range = log!(time = UNIX_EPOCH + Duration::from_secs(u32::MAX as u64 + 1););
+    assert_eq!(*before_epoch.time(), 0);
+    assert_eq!(*after_range.time(), u32::MAX);
+}

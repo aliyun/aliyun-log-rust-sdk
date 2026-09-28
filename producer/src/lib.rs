@@ -43,12 +43,8 @@ pub use error::ProducerError;
 /// Unstable internal integration API; subject to change.
 #[doc(hidden)]
 pub use events::EventBatch;
-pub use logs::{log, log_at, log_now, IntoLog};
-pub use threaded::ThreadedProducer;
+pub use threaded::Producer;
 
-/// Producer with automatic batching, retries and delivery callbacks.
-/// Create with [`Producer::create`] and close explicitly before exiting.
-pub type Producer = ThreadedProducer;
 pub use types::*;
 pub use writer::LogstoreWriter;
 

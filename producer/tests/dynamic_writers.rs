@@ -1,4 +1,4 @@
-use aliyun_log_producer::{Log, ProducerConfig, ThreadedProducer};
+use aliyun_log_producer::{Log, Producer, ProducerConfig};
 use aliyun_log_rust_sdk::{Credentials, CredentialsError, CredentialsProvider};
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
@@ -57,7 +57,7 @@ async fn dynamic_writers_share_http_connection_and_credentials_cache() {
         requests
     });
     let fetches = Arc::new(AtomicUsize::new(0));
-    let producer = ThreadedProducer::create(
+    let producer = Producer::create(
         ProducerConfig::default()
             // Client prefixes project 127, yielding loopback 127.0.0.1.
             .with_endpoint(format!("http://0.0.1:{port}"))

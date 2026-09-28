@@ -153,7 +153,7 @@ fn blocking_lifecycle_needs_no_runtime_and_threaded_close_keeps_callback_affinit
     let (base, writer) = base(config());
     let thread = std::thread::current().id();
     let (tx, rx) = flume::bounded(1);
-    let producer = ThreadedProducer::from_base(base).unwrap();
+    let producer = Producer::from_base(base).unwrap();
     writer
         .send_with_callback(entry("blocking"), move |_| {
             tx.send(std::thread::current().id()).unwrap();
@@ -182,7 +182,7 @@ async fn dropping_manual_producer_and_writers_does_not_leak_runtime_with_pending
 fn blocking_lifecycle_works_inside_another_executor() {
     futures_lite::future::block_on(async {
         let (base, writer) = base(config());
-        let producer = ThreadedProducer::from_base(base).unwrap();
+        let producer = Producer::from_base(base).unwrap();
         let completed = Arc::new(AtomicUsize::new(0));
         let observed = completed.clone();
         writer

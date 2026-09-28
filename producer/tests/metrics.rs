@@ -1,5 +1,5 @@
 //! Exercises the production build through the public API (without unit-test hooks).
-use aliyun_log_producer::{DeliveryError, Log, ProducerConfig, ThreadedProducer};
+use aliyun_log_producer::{DeliveryError, Log, Producer, ProducerConfig};
 use aliyun_log_rust_sdk::{Credentials, CredentialsError, CredentialsProvider};
 use metrics_util::debugging::{DebugValue, DebuggingRecorder};
 use std::{collections::HashMap, time::Duration};
@@ -14,11 +14,11 @@ impl CredentialsProvider for UnavailableCredentials {
     }
 }
 
-fn start() -> ThreadedProducer {
+fn start() -> Producer {
     start_with_writers(&[("project", "store")])
 }
 
-fn start_with_writers(destinations: &[(&str, &str)]) -> ThreadedProducer {
+fn start_with_writers(destinations: &[(&str, &str)]) -> Producer {
     let config = ProducerConfig::default()
         .with_endpoint("https://cn-hangzhou.log.aliyuncs.com")
         .with_credentials_provider(UnavailableCredentials)
@@ -27,7 +27,7 @@ fn start_with_writers(destinations: &[(&str, &str)]) -> ThreadedProducer {
         .with_max_attempts(2)
         .with_base_backoff(Duration::from_millis(1))
         .with_max_backoff(Duration::from_millis(2));
-    let producer = ThreadedProducer::create(config).unwrap();
+    let producer = Producer::create(config).unwrap();
     for &(project, logstore) in destinations {
         producer.writer(project, logstore).unwrap();
     }

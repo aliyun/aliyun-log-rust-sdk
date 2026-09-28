@@ -1,6 +1,6 @@
 use aliyun_log_producer::{
     Credentials, CredentialsError, CredentialsProvider, DeliveryError, DeliveryResult, Log,
-    ProducerConfig, ProducerError, ThreadedProducer,
+    Producer, ProducerConfig, ProducerError,
 };
 use std::time::Duration;
 
@@ -32,7 +32,7 @@ fn create_rejects_invalid_connection_and_settings() {
         ProducerConfig::default().with_endpoint("cn-hangzhou.log.aliyuncs.com"),
     ] {
         assert!(matches!(
-            ThreadedProducer::create(config),
+            Producer::create(config),
             Err(ProducerError::Config(_))
         ));
     }
@@ -41,8 +41,8 @@ fn create_rejects_invalid_connection_and_settings() {
 #[tokio::test]
 async fn cloned_configs_create_independent_producers_without_registration() {
     let config = config();
-    let first = ThreadedProducer::create(config.clone()).unwrap();
-    let second = ThreadedProducer::create(config).unwrap();
+    let first = Producer::create(config.clone()).unwrap();
+    let second = Producer::create(config).unwrap();
     first.close().await.unwrap();
     let mut log = Log::from_unixtime(1_700_000_000);
     log.add_content_kv("message", "second producer remains open");
@@ -62,9 +62,9 @@ fn config_debug_redacts_credentials() {
     assert!(!debug.contains("private-key-secret"));
 }
 
-// ThreadedProducer operations propagate one error type; callbacks report delivery separately.
+// Producer operations propagate one error type; callbacks report delivery separately.
 async fn create_write_and_close() -> Result<DeliveryResult, ProducerError> {
-    let producer = ThreadedProducer::create(config())?;
+    let producer = Producer::create(config())?;
     let writer = producer.writer("project", "store")?;
     let mut log = Log::from_unixtime(1_700_000_000);
     log.add_content_kv("message", "test");
@@ -87,7 +87,7 @@ async fn producer_operations_and_callback_use_separate_error_types() {
 
 #[tokio::test]
 async fn rejection_returns_original_log_without_exposing_payload_in_debug() {
-    let producer = ThreadedProducer::create(config()).unwrap();
+    let producer = Producer::create(config()).unwrap();
     let mut log = Log::from_unixtime(1_700_000_000);
     log.add_content_kv("message", "private-log-payload");
     let pointer = log.contents()[0].value().as_ptr();
@@ -124,26 +124,25 @@ fn non_admission_errors_have_no_log() {
 }
 
 #[test]
-fn all_send_methods_accept_hashmaps_and_return_converted_logs_on_rejection() {
+fn all_send_methods_return_logs_on_rejection() {
     use aliyun_log_producer::SendOptions;
-    use std::collections::HashMap;
 
-    let producer = ThreadedProducer::create(config()).unwrap();
+    let producer = Producer::create(config()).unwrap();
     let writer = producer.writer("project", "store").unwrap();
     producer.close_blocking().unwrap();
-    let fields = || HashMap::from([("message".to_owned(), "from map".to_owned())]);
+    let entry = || aliyun_log_producer::log!("message": "rejected log");
     let unexpected = |_: &DeliveryResult| panic!("rejected sends must not invoke callbacks");
     for result in [
-        writer.send(fields()),
-        writer.send_with_options(fields(), SendOptions::default()),
-        writer.send_with_callback(fields(), unexpected),
-        writer.send_with_options_and_callback(fields(), SendOptions::default(), unexpected),
+        writer.send(entry()),
+        writer.send_with_options(entry(), SendOptions::default()),
+        writer.send_with_callback(entry(), unexpected),
+        writer.send_with_options_and_callback(entry(), SendOptions::default(), unexpected),
     ] {
         let error = result.unwrap_err();
         assert!(matches!(error, ProducerError::Closed { .. }));
         let log = error.into_log().unwrap();
         assert_eq!(log.contents()[0].key(), "message");
-        assert_eq!(log.contents()[0].value(), "from map");
+        assert_eq!(log.contents()[0].value(), "rejected log");
         assert_eq!(*log.time_ns(), None);
     }
 }
@@ -199,7 +198,7 @@ fn zero_is_not_allowed_for_delivery_and_retry_delays() {
         config().with_max_backoff(Duration::ZERO),
     ] {
         assert!(matches!(
-            ThreadedProducer::create(invalid),
+            Producer::create(invalid),
             Err(ProducerError::Config(_))
         ));
     }

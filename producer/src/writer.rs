@@ -6,8 +6,8 @@ use crate::{
     batch::{self, Command, Envelope, Key, PreparedLog},
     registry::WriterTarget,
     state::Submission,
-    BaseProducer, Callback, DeliveryResult, IntoLog, Log, ProducerError, ProducerState,
-    SendOptions, SubmissionId,
+    BaseProducer, Callback, DeliveryResult, Log, ProducerError, ProducerState, SendOptions,
+    SubmissionId,
 };
 
 /// Cloneable, Send + Sync writer bound to a project/logstore.
@@ -46,6 +46,8 @@ impl LogstoreWriter {
     }
 
     /// Admit one log without waiting for capacity. No Tokio runtime is required.
+    /// Accepts a [`Log`] or an application type implementing `Into<Log>`,
+    /// typically through `From<MyType> for Log`.
     /// Encoding, network delivery and retries run on the producer's background workers.
     /// `Ok(())` means the input was accepted locally. Use [`Self::send_with_callback`]
     /// when the final delivery outcome is needed. This method creates no callback
@@ -59,17 +61,17 @@ impl LogstoreWriter {
     ///
     /// Every returned error retains the converted [`Log`], recoverable with
     /// [`ProducerError::into_log`]; no input is admitted and no callback is invoked.
-    pub fn send(&self, log: impl IntoLog) -> Result<(), ProducerError> {
+    pub fn send(&self, log: impl Into<Log>) -> Result<(), ProducerError> {
         self.send_with_options(log, SendOptions::default())
     }
 
     /// Send with explicit source/topic options. Acceptance and errors match [`Self::send`].
     pub fn send_with_options(
         &self,
-        log: impl IntoLog,
+        log: impl Into<Log>,
         options: SendOptions,
     ) -> Result<(), ProducerError> {
-        self.enqueue(log.into_log(), options, None)
+        self.enqueue(log.into(), options, None)
     }
 
     /// Admit one log without waiting for capacity, with a final delivery callback.
@@ -98,7 +100,7 @@ impl LogstoreWriter {
     /// invoking it. Retrying admission requires a new callback; options can be cloned.
     pub fn send_with_callback(
         &self,
-        log: impl IntoLog,
+        log: impl Into<Log>,
         callback: impl FnOnce(&DeliveryResult) + Send + 'static,
     ) -> Result<(), ProducerError> {
         self.send_with_options_and_callback(log, SendOptions::default(), callback)
@@ -108,11 +110,11 @@ impl LogstoreWriter {
     /// Callback behavior and errors match [`Self::send_with_callback`].
     pub fn send_with_options_and_callback(
         &self,
-        log: impl IntoLog,
+        log: impl Into<Log>,
         options: SendOptions,
         callback: impl FnOnce(&DeliveryResult) + Send + 'static,
     ) -> Result<(), ProducerError> {
-        self.enqueue(log.into_log(), options, Some(Box::new(callback)))
+        self.enqueue(log.into(), options, Some(Box::new(callback)))
     }
 
     fn enqueue(

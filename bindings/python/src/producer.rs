@@ -72,7 +72,7 @@ impl Log {
         }
         let mut inner = time
             .map(RustLog::from_unixtime)
-            .unwrap_or_else(aliyun_log_producer::log_now);
+            .unwrap_or_else(|| aliyun_log_producer::log!());
         if let Some(ns) = time_ns {
             inner.set_time_ns(ns);
         }

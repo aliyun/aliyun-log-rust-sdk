@@ -22,10 +22,10 @@ use std::{
 /// Async lifecycle waits work on any executor. Blocking variants need no runtime.
 /// Delivery is unordered, retries may duplicate logs, and no disk persistence is used.
 #[derive(Clone)]
-pub struct ThreadedProducer {
+pub struct Producer {
     pub(crate) base: BaseProducer,
 }
-impl ThreadedProducer {
+impl Producer {
     /// Create a producer using the supplied configuration.
     /// No network requests or credential fetches are made during creation.
     /// Install the application metrics Recorder before this call; handles are cached.

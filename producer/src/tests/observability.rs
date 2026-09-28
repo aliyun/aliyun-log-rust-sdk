@@ -1,7 +1,7 @@
 //! Cumulative counter snapshots for metric assertions.
 use crate::{
     state::{DeliveryCounters, Shared},
-    ThreadedProducer,
+    Producer,
 };
 use metrics_util::debugging::{DebugValue, Snapshotter};
 use std::{collections::HashMap, sync::Mutex, time::Duration};
@@ -10,7 +10,7 @@ pub(crate) fn delivery_counts(shared: &Shared) -> DeliveryCounters {
     shared.gate.lock().unwrap().totals.clone()
 }
 
-pub(crate) fn capture_metrics(producer: &ThreadedProducer) -> MetricSnapshot {
+pub(crate) fn capture_metrics(producer: &Producer) -> MetricSnapshot {
     producer.base.inner.shared.observer.snapshot()
 }
 
@@ -96,7 +96,7 @@ async fn successful_send_and_submission_completion_do_not_write_metrics() {
     // No background sampler/aggregator: only exercise the user and submission paths.
     let shared = Shared::for_test(1, super::config(), [("project", "store")]);
     let (tx, mut rx) = mpsc::channel(8);
-    let producer = ThreadedProducer {
+    let producer = Producer {
         base: crate::BaseProducer {
             inner: Arc::new(Frontend {
                 shared: shared.clone(),

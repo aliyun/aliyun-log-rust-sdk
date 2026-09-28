@@ -1,29 +1,28 @@
-use aliyun_log_producer::IntoLog;
-use std::{
-    collections::HashMap,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use aliyun_log_producer::Log;
 
 #[test]
-fn owned_hashmap_converts_to_log_with_current_time() {
-    let fields = HashMap::from([
-        (String::from("level"), String::from("INFO")),
-        (String::from("message"), String::from("你好 SLS")),
-    ]);
-    let before = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-    let log = fields.into_log();
-    let after = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+fn application_defined_from_conversion_works_with_send() {
+    use aliyun_log_producer::{Producer, ProducerConfig};
 
-    let actual: HashMap<_, _> = log
-        .contents()
-        .iter()
-        .map(|field| (field.key().as_str(), field.value().as_str()))
-        .collect();
-    assert_eq!(
-        actual,
-        HashMap::from([("level", "INFO"), ("message", "你好 SLS")])
-    );
-    let timestamp = *log.time() as u64;
-    assert!(before.as_secs() <= timestamp && timestamp <= after.as_secs());
-    assert_eq!(*log.time_ns(), None);
+    struct Event(String);
+    impl From<Event> for Log {
+        fn from(event: Event) -> Self {
+            aliyun_log_producer::log!("message": event.0)
+        }
+    }
+
+    let producer = Producer::create(
+        ProducerConfig::default()
+            .with_endpoint("example.com")
+            .with_access_key("test-id", "test-secret"),
+    )
+    .unwrap();
+    let writer = producer.writer("project", "store").unwrap();
+    producer.close_blocking().unwrap();
+    let rejected = writer
+        .send(Event("custom event".into()))
+        .unwrap_err()
+        .into_log()
+        .unwrap();
+    assert_eq!(rejected.contents()[0].value(), "custom event");
 }
