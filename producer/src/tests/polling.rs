@@ -20,7 +20,7 @@ async fn base_delivery_requires_poll_and_dropped_batch_returns_capacity_only_aft
         let calls = calls.clone();
         writer
             .send_with_callback(entry("one"), move |r| {
-                r.unwrap();
+                r.as_ref().unwrap();
                 assert_eq!(std::thread::current().id(), caller);
                 calls.fetch_add(1, Ordering::Relaxed);
             })
@@ -106,7 +106,7 @@ async fn polling_batches_bound_dispatch_and_requeue_preserves_order() {
         let calls = calls.clone();
         writer
             .send_with_callback(entry("delivery"), move |result| {
-                result.unwrap();
+                result.as_ref().unwrap();
                 calls.lock().unwrap().push(index);
             })
             .unwrap();
@@ -187,7 +187,7 @@ fn blocking_lifecycle_works_inside_another_executor() {
         let observed = completed.clone();
         writer
             .send_with_callback(entry("nested"), move |result| {
-                result.unwrap();
+                result.as_ref().unwrap();
                 observed.fetch_add(1, Ordering::Relaxed);
             })
             .unwrap();

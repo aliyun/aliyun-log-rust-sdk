@@ -80,7 +80,7 @@ async fn dynamic_writers_share_http_connection_and_credentials_cache() {
         let (tx, rx) = tokio::sync::oneshot::channel();
         writer
             .send_with_callback(log, move |r| {
-                tx.send(r).unwrap();
+                tx.send(r.clone()).unwrap();
             })
             .unwrap();
         producer.flush().await.unwrap();

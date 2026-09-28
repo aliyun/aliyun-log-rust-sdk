@@ -91,7 +91,10 @@ async fn cached_handles_record_across_workers_and_aggregate_producers() {
             .writer("project", "store")
             .unwrap()
             .send_with_callback(entry(), |result| {
-                assert!(matches!(result.unwrap_err(), DeliveryError::Credentials(_)));
+                assert!(matches!(
+                    result.as_ref().unwrap_err(),
+                    DeliveryError::Credentials(_)
+                ));
                 panic!("intentional callback panic");
             })
             .unwrap();
@@ -119,7 +122,7 @@ async fn lifecycle_waits_work_without_a_recorder_even_when_delivery_fails() {
         .writer("project", "store")
         .unwrap()
         .send_with_callback(entry(), move |result| {
-            completed.send(result).unwrap();
+            completed.send(result.clone()).unwrap();
         })
         .unwrap();
     // Individual delivery fails; completing the lifecycle wait still returns Ok(()).

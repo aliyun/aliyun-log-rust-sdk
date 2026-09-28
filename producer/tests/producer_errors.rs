@@ -70,7 +70,7 @@ async fn create_write_and_close() -> Result<DeliveryResult, ProducerError> {
     log.add_content_kv("message", "test");
     let (tx, rx) = tokio::sync::oneshot::channel();
     writer.send_with_callback(log, move |result| {
-        tx.send(result).unwrap();
+        tx.send(result.clone()).unwrap();
     })?;
     producer.flush().await?;
     producer.close().await?;
@@ -132,7 +132,7 @@ fn all_send_methods_accept_hashmaps_and_return_converted_logs_on_rejection() {
     let writer = producer.writer("project", "store").unwrap();
     producer.close_blocking().unwrap();
     let fields = || HashMap::from([("message".to_owned(), "from map".to_owned())]);
-    let unexpected = |_| panic!("rejected sends must not invoke callbacks");
+    let unexpected = |_: &DeliveryResult| panic!("rejected sends must not invoke callbacks");
     for result in [
         writer.send(fields()),
         writer.send_with_options(fields(), SendOptions::default()),

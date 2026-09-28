@@ -150,7 +150,7 @@ impl Shared {
     pub fn complete(
         self: &Arc<Self>,
         ids: impl IntoIterator<Item = SubmissionId>,
-        result: &DeliveryResult,
+        result: DeliveryResult,
     ) {
         let mut jobs = Vec::new();
         let mut bytes = 0;
@@ -164,12 +164,7 @@ impl Shared {
             bytes += pending.raw_bytes;
             completed += 1;
             if let Some(callback) = pending.callback {
-                jobs.push(CallbackJob {
-                    callback: Some(callback),
-                    result: Some(result.clone()),
-                    id,
-                    shared: Arc::downgrade(self),
-                });
+                jobs.push((id, callback));
             }
         }
         if result.is_ok() {
@@ -183,7 +178,20 @@ impl Shared {
         // Admission reserved callback capacity. Publication never waits for space
         // and must happen outside the gate (abandoned jobs release their slots).
         if !jobs.is_empty() {
-            self.events.extend(jobs);
+            // One owned result per completed batch, shared even when polling
+            // splits its callbacks across multiple EventBatches.
+            let result = Arc::new(result);
+            let shared = Arc::downgrade(self);
+            self.events.extend(
+                jobs.into_iter()
+                    .map(|(id, callback)| CallbackJob {
+                        callback: Some(callback),
+                        result: result.clone(),
+                        id,
+                        shared: shared.clone(),
+                    })
+                    .collect(),
+            );
         }
         self.notify();
     }
@@ -196,7 +204,7 @@ impl Shared {
             gate.fatal = Some(error.to_owned());
             gate.pending.keys().copied().collect()
         };
-        self.complete(pending, &Err(DeliveryError::Internal(error.to_owned())));
+        self.complete(pending, Err(DeliveryError::Internal(error.to_owned())));
     }
 }
 
@@ -248,7 +256,7 @@ impl Progress {
 
 pub(crate) struct CallbackJob {
     callback: Option<Callback>,
-    result: Option<DeliveryResult>,
+    result: Arc<DeliveryResult>,
     id: SubmissionId,
     shared: Weak<Shared>,
 }
@@ -256,9 +264,8 @@ pub(crate) struct CallbackJob {
 impl CallbackJob {
     pub fn run(mut self) {
         let callback = self.callback.take().expect("callback consumed once");
-        let result = self.result.take().expect("result consumed once");
         let id = self.id;
-        if catch_unwind(AssertUnwindSafe(|| callback(result))).is_err() {
+        if catch_unwind(AssertUnwindSafe(|| callback(&self.result))).is_err() {
             log::error!("SLS producer callback panicked for {id:?}");
         }
     }
@@ -279,6 +286,61 @@ mod tests {
     use crate::tests::observability::delivery_counts;
 
     #[test]
+    fn batch_callbacks_share_result_across_polls_requeue_and_panic() {
+        let shared = Shared::new(1, ProducerConfig::default());
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let message = "shared batch failure".repeat(1024);
+        let message_pointer = message.as_ptr() as usize;
+        for id in 0..130 {
+            let seen = seen.clone();
+            shared.gate.lock().unwrap().admit(
+                &Submission::new(SubmissionId(id), 1),
+                Some(Box::new(move |result| {
+                    let Err(DeliveryError::Internal(message)) = result else {
+                        panic!("expected the batch failure");
+                    };
+                    seen.lock().unwrap().push((
+                        id,
+                        result as *const DeliveryResult as usize,
+                        message.as_ptr() as usize,
+                    ));
+                    if id == 0 {
+                        panic!("one callback must not prevent the rest from running");
+                    }
+                })),
+            );
+        }
+        shared.raw_bytes.store(130, Ordering::Relaxed);
+        shared.complete(
+            (0..130).map(SubmissionId),
+            Err(DeliveryError::Internal(message)),
+        );
+
+        // Dropping a fetched batch must preserve the shared result on requeue.
+        drop(crate::events::poll_batch(&shared, Duration::ZERO).unwrap());
+        assert!(seen.lock().unwrap().is_empty());
+        for (count, remaining) in [(64, 66), (64, 2), (2, 0)] {
+            assert_eq!(
+                crate::events::poll_batch(&shared, Duration::ZERO)
+                    .unwrap()
+                    .dispatch(),
+                count
+            );
+            assert_eq!(shared.gate.lock().unwrap().callbacks, remaining);
+        }
+        let seen = seen.lock().unwrap();
+        assert_eq!(seen.len(), 130);
+        for (index, &(id, result_pointer, pointer)) in seen.iter().enumerate() {
+            assert_eq!(id, index as u64);
+            assert_eq!(result_pointer, seen[0].1);
+            // The error String itself was moved into the shared result, not cloned.
+            assert_eq!(pointer, message_pointer);
+        }
+        assert_eq!(shared.gate.lock().unwrap().totals.failed_logs, 130);
+        assert_eq!(shared.raw_bytes.load(Ordering::Relaxed), 0);
+    }
+
+    #[test]
     fn terminal_submission_is_accounted_once_and_survives_failure_cleanup() {
         let shared = Shared::for_test(1, ProducerConfig::default(), [("project", "store-0")]);
         let completed = Submission::new(SubmissionId(1), 100);
@@ -289,10 +351,10 @@ mod tests {
             gate.admit(&pending, None);
         }
         shared.raw_bytes.store(180, Ordering::Relaxed);
-        shared.complete([completed.id], &Ok(()));
+        shared.complete([completed.id], Ok(()));
         shared.complete(
             [completed.id],
-            &Err(DeliveryError::Internal("already finished".into())),
+            Err(DeliveryError::Internal("already finished".into())),
         );
         shared.fail_pending("worker failed");
 
@@ -323,14 +385,14 @@ mod tests {
                 .collect();
             shared.raw_bytes.store(25600, Ordering::Relaxed);
             std::thread::scope(|scope| {
-                scope.spawn(|| shared.complete(submissions.iter().map(|s| s.id), &Ok(())));
+                scope.spawn(|| shared.complete(submissions.iter().map(|s| s.id), Ok(())));
                 scope.spawn(|| {
                     for submission in &submissions {
-                        shared.complete([submission.id], &Ok(()));
+                        shared.complete([submission.id], Ok(()));
                     }
                 });
             });
-            shared.complete(submissions.iter().map(|s| s.id), &Ok(()));
+            shared.complete(submissions.iter().map(|s| s.id), Ok(()));
             shared.fail_pending("already finished");
             assert_eq!(shared.gate.lock().unwrap().callbacks, 256);
             for _ in 0..4 {

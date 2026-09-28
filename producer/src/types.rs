@@ -25,7 +25,7 @@ pub type DeliveryResult = Result<(), DeliveryError>;
 
 /// One final [`DeliveryResult`] per accepted submission, executed by the event consumer.
 /// See [`crate::LogstoreWriter::send_with_callback`] for execution and failure behavior.
-pub(crate) type Callback = Box<dyn FnOnce(DeliveryResult) + Send + 'static>;
+pub(crate) type Callback = Box<dyn FnOnce(&DeliveryResult) + Send + 'static>;
 
 /// Cloneable source and topic options for one log submission.
 /// Source/topic default to empty, with no distinction between unset and empty.

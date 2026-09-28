@@ -76,7 +76,9 @@ impl LogstoreWriter {
     /// No caller runtime is required. Like [`Self::send`], `Ok(())` means local
     /// acceptance; delivery, retries and notification continue in the background.
     ///
-    /// Once accepted, polling invokes the closure once with `DeliveryResult`.
+    /// Once accepted, polling invokes the closure once with `&DeliveryResult`.
+    /// Callbacks for the same completed batch share a result. Clone it to retain
+    /// an owned result after the callback returns, for example to send over a channel.
     /// Intermediate retries never invoke it. BaseProducer executes on the poll
     /// caller; Producer uses its single poll thread. Order is unspecified.
     /// The send call never invokes the callback inline. Capture owned context in
@@ -97,7 +99,7 @@ impl LogstoreWriter {
     pub fn send_with_callback(
         &self,
         log: impl IntoLog,
-        callback: impl FnOnce(DeliveryResult) + Send + 'static,
+        callback: impl FnOnce(&DeliveryResult) + Send + 'static,
     ) -> Result<(), ProducerError> {
         self.send_with_options_and_callback(log, SendOptions::default(), callback)
     }
@@ -108,7 +110,7 @@ impl LogstoreWriter {
         &self,
         log: impl IntoLog,
         options: SendOptions,
-        callback: impl FnOnce(DeliveryResult) + Send + 'static,
+        callback: impl FnOnce(&DeliveryResult) + Send + 'static,
     ) -> Result<(), ProducerError> {
         self.enqueue(log.into_log(), options, Some(Box::new(callback)))
     }

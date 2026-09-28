@@ -16,7 +16,7 @@ impl Callback {
         }
     }
 
-    pub(crate) fn run(self, result: DeliveryResult) {
+    pub(crate) fn run(self, result: &DeliveryResult) {
         // Invoked only by the Python-owned poll thread with the GIL already held.
         // Nested attachment reuses that attachment for every callback in the batch.
         Python::try_attach(move |py| {

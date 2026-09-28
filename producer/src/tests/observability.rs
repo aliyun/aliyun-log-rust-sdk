@@ -107,13 +107,13 @@ async fn successful_send_and_submission_completion_do_not_write_metrics() {
     let writer = producer.writer("project", "store").unwrap();
     for _ in 0..128 {
         writer
-            .send_with_callback(super::entry("single"), |r| r.unwrap())
+            .send_with_callback(super::entry("single"), |r| assert!(r.is_ok()))
             .unwrap();
         let Command::Log(envelope) = rx.try_recv().unwrap() else {
             panic!("expected log")
         };
         let submission: Submission = envelope.submission;
-        shared.complete([submission.id], &Ok(()));
+        shared.complete([submission.id], Ok(()));
         assert_eq!(
             crate::events::poll_batch(&shared, Duration::ZERO)
                 .unwrap()
@@ -125,7 +125,7 @@ async fn successful_send_and_submission_completion_do_not_write_metrics() {
             let Command::Log(envelope) = rx.try_recv().unwrap() else {
                 panic!("expected log");
             };
-            shared.complete([envelope.submission.id], &Ok(()));
+            shared.complete([envelope.submission.id], Ok(()));
         }
     }
     for (key, _, _, value) in shared.observer.recorder.snapshot().into_vec() {

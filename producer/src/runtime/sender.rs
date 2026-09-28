@@ -281,7 +281,7 @@ impl BatchSender {
                 target.project, target.logstore, submission_ids.len(), attempts, error.name(),
                 error.http_status(), error.error_code(), error.request_id(), pack_id);
         }
-        self.shared.complete(submission_ids, &outcome);
+        self.shared.complete(submission_ids, outcome);
     }
 }
 

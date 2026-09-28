@@ -136,8 +136,12 @@ fn blocking_lifecycle_and_owned_callback_need_no_caller_runtime() {
         .with_topic("shared-topic");
     writers[0]
         .send_with_options_and_callback(entry("observed"), options.clone(), move |result| {
-            tx.send((result, context.into_inner(), std::thread::current().id()))
-                .unwrap();
+            tx.send((
+                result.clone(),
+                context.into_inner(),
+                std::thread::current().id(),
+            ))
+            .unwrap();
         })
         .unwrap();
     writers[0]
@@ -171,7 +175,7 @@ fn blocking_flush_ignores_callback_but_close_waits_and_stops_admission() {
     let (release_tx, release_rx) = flume::bounded(1);
     writers[0]
         .send_with_callback(entry("slow callback"), move |result| {
-            entered_tx.send(result).unwrap();
+            entered_tx.send(result.clone()).unwrap();
             release_rx.recv().unwrap();
         })
         .unwrap();
@@ -189,7 +193,7 @@ fn blocking_flush_ignores_callback_but_close_waits_and_stops_admission() {
     let (rejected_tx, rejected_rx) = flume::bounded(1);
     let error = writers[0]
         .send_with_callback(entry("rejected"), move |result| {
-            rejected_tx.send(result).unwrap();
+            rejected_tx.send(result.clone()).unwrap();
         })
         .unwrap_err();
     assert!(matches!(error, ProducerError::Closed { .. }));
@@ -226,7 +230,7 @@ fn blocking_flush_timeout_does_not_cancel_delivery() {
     let (tx, rx) = flume::bounded(1);
     writers[0]
         .send_with_callback(entry("pending"), move |result| {
-            tx.send(result).unwrap();
+            tx.send(result.clone()).unwrap();
         })
         .unwrap();
     assert!(matches!(
@@ -445,7 +449,7 @@ async fn unset_and_empty_source_topic_share_one_batch() {
         let log = entry(index.to_string());
         writers[0]
             .send_with_options_and_callback(log, options, move |report| {
-                reports.lock().unwrap().push(report)
+                reports.lock().unwrap().push(report.clone())
             })
             .unwrap();
     }
@@ -479,7 +483,7 @@ async fn count_threshold_batches_logs_and_calls_back_once_per_log() {
         let calls = calls.clone();
         writers[0]
             .send_with_callback(entry(index.to_string()), move |result| {
-                let error = result.unwrap_err();
+                let error = result.as_ref().unwrap_err();
                 assert_eq!(error.http_status(), Some(403));
                 assert_eq!(error.error_code(), Some("MissAccessKeyId"));
                 assert_eq!(error.request_id(), Some("test-request"));
@@ -612,7 +616,7 @@ async fn retries_reuse_compressed_payload_and_enforce_attempt_limit() {
     let (tx, rx) = oneshot::channel();
     writers[0]
         .send_with_callback(entry("retry"), move |r| {
-            tx.send(r).unwrap();
+            tx.send(r.clone()).unwrap();
         })
         .unwrap();
     producer.test_close(Duration::from_secs(5)).await.unwrap();
@@ -643,7 +647,7 @@ async fn unclassified_transport_errors_retry_until_attempt_limit() {
     let (tx, rx) = oneshot::channel();
     writers[0]
         .send_with_callback(entry("unknown failure"), move |report| {
-            tx.send(report).unwrap();
+            tx.send(report.clone()).unwrap();
         })
         .unwrap();
     producer.test_close(Duration::from_secs(5)).await.unwrap();
@@ -665,7 +669,7 @@ async fn deadline_reports_failure_and_does_not_hang_close() {
     let (tx, rx) = oneshot::channel();
     writers[0]
         .send_with_callback(entry("timeout"), move |r| {
-            tx.send(r).unwrap();
+            tx.send(r.clone()).unwrap();
         })
         .unwrap();
     producer.test_close(Duration::from_secs(5)).await.unwrap();
@@ -873,7 +877,7 @@ async fn flush_observes_completed_delivery_while_callback_queue_is_full() {
                     wake.wait_while(lock.lock().unwrap(), |released| !*released)
                         .unwrap(),
                 );
-                result.unwrap();
+                result.as_ref().unwrap();
                 completed.fetch_add(1, Ordering::Relaxed);
             })
             .unwrap();
@@ -1054,7 +1058,7 @@ async fn send_accepts_logs_without_content_validation() {
         let callbacks = callbacks.clone();
         writers[0]
             .send_with_callback(log, move |result| {
-                result.unwrap();
+                result.as_ref().unwrap();
                 callbacks.fetch_add(1, Ordering::SeqCst);
             })
             .unwrap();
@@ -1124,7 +1128,7 @@ async fn oversized_group_reaches_transport_and_reports_service_error() {
     let (tx, rx) = oneshot::channel();
     writers[0]
         .send_with_callback(entry("x".repeat(12 * 1024 * 1024)), move |result| {
-            tx.send(result).unwrap();
+            tx.send(result.clone()).unwrap();
         })
         .unwrap();
     producer.test_close(Duration::from_secs(5)).await.unwrap();
@@ -1214,7 +1218,7 @@ async fn internal_capacity_bounds_concurrency_and_survives_provider_panics() {
         let results = results.clone();
         writers[0]
             .send_with_callback(log, move |result| {
-                results.lock().unwrap().push(result);
+                results.lock().unwrap().push(result.clone());
             })
             .unwrap();
     }
@@ -1370,7 +1374,7 @@ async fn writer_lookup_and_callback_confirm_delivery() {
                 .with_source("host")
                 .with_topic("topic"),
             move |report| {
-                tx.send(report).unwrap();
+                tx.send(report.clone()).unwrap();
             },
         )
         .unwrap();
@@ -1513,7 +1517,7 @@ async fn check_http_compression(
                 .with_source("host")
                 .with_topic("topic"),
             move |report| {
-                tx.send(report).unwrap();
+                tx.send(report.clone()).unwrap();
             },
         )
         .unwrap();
@@ -1558,7 +1562,7 @@ async fn queued_batches_expire_without_making_more_http_calls() {
     writers[0].send(entry("in-flight")).unwrap();
     writers[0]
         .send_with_callback(entry("queued"), move |report| {
-            tx.send(report).unwrap();
+            tx.send(report.clone()).unwrap();
         })
         .unwrap();
     producer.test_close(Duration::from_secs(5)).await.unwrap();
@@ -1696,7 +1700,7 @@ async fn configuration_and_credential_categories_preserve_retry_behavior() {
         let (tx, rx) = oneshot::channel();
         writers[0]
             .send_with_callback(entry("test"), move |result| {
-                tx.send(result).unwrap();
+                tx.send(result.clone()).unwrap();
             })
             .unwrap();
         producer.test_close(Duration::from_secs(5)).await.unwrap();

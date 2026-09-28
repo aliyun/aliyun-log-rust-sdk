@@ -39,9 +39,9 @@ pub(crate) struct DeliveryError {
     request_id: Option<String>,
 }
 
-impl From<RustDeliveryError> for DeliveryError {
-    fn from(error: RustDeliveryError) -> Self {
-        let (kind, message) = match &error {
+impl From<&RustDeliveryError> for DeliveryError {
+    fn from(error: &RustDeliveryError) -> Self {
+        let (kind, message) = match error {
             RustDeliveryError::Server { message, .. } => ("server", message.clone()),
             RustDeliveryError::Network(message) => ("network", message.clone()),
             RustDeliveryError::Credentials(message) => ("credentials", message.clone()),
