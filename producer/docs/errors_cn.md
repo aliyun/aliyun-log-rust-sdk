@@ -14,8 +14,7 @@
 | `EnqueueFull` | 队列已满，未接收这条日志。可以稍后重试。 |
 | `Closed` | Producer 正在关闭或已关闭。请停止发送，或创建新的 Producer。 |
 | `InvalidInput` | Project 或 Logstore 名称不正确。检查传入的名称。 |
-| `PollBusy` | 回调处理正忙。避免同时调用 `poll_batch`。 |
-| `Reentrant` | 在回调中等待或处理同一个 Producer。请将 flush、close 或 `poll_batch` 移到回调外。 |
+| `Reentrant` | 在回调中等待同一个 Producer。请在回调外调用 flush 或 close。 |
 | `Internal` | Producer 运行出错。保留错误信息以便排查。 |
 
 `EnqueueFull` 和 `Closed` 不会触发回调。可以用 `into_log()` 取回未发送的日志，稍后重试或另行保存。

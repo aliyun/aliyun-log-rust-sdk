@@ -14,8 +14,7 @@ Flush and close do not report individual delivery failures.
 | `EnqueueFull` | The queue is full and the log was not accepted. Retry later. |
 | `Closed` | Producer is closing or closed. Stop sending or create a new Producer. |
 | `InvalidInput` | Invalid Project or Logstore name. Check the names you supplied. |
-| `PollBusy` | Callback processing is busy. Avoid calling `poll_batch` concurrently. |
-| `Reentrant` | Waiting for or processing the same Producer from its callback. Move flush, close, or `poll_batch` outside the callback. |
+| `Reentrant` | Waiting for the same Producer from its callback. Call flush or close outside the callback. |
 | `Internal` | Producer encountered an error. Keep the error message for troubleshooting. |
 
 `EnqueueFull` and `Closed` do not trigger a callback. Use `into_log()` to retrieve the unsent log and retry later or save it elsewhere.

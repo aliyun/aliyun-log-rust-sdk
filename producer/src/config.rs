@@ -199,7 +199,7 @@ impl ProducerConfig {
     }
 
     /// Estimated log-entry bytes that trigger sending, excluding group metadata.
-    /// A complete submission may exceed this threshold; it is never split.
+    /// A single log may exceed this byte threshold; it is never split.
     /// Defaults to 1 MiB; must be at most 8 MiB.
     pub fn with_batch_size_threshold(mut self, value: usize) -> Self {
         self.batch_size_threshold = value;
@@ -212,7 +212,6 @@ impl ProducerConfig {
     }
 
     /// Log count that triggers sending. Defaults to 4096, at most 40960.
-    /// A complete submission may exceed this threshold; it is never split.
     pub fn with_batch_count_threshold(mut self, value: usize) -> Self {
         self.batch_count_threshold = value;
         self
