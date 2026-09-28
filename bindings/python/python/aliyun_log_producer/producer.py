@@ -6,7 +6,7 @@ import sys
 import threading
 import weakref
 
-from ._native import _BaseProducer, ProducerConfig, ConfigError, InvalidArgumentError
+from ._native import _BaseProducer, ProducerConfig, ProducerError, ConfigError, InvalidArgumentError
 from .credentials import _CredentialsManager
 
 
@@ -99,10 +99,12 @@ class Producer:
                 _graalpy_threads[self._thread] = (self._native, stop, self._join_lock)
         try:
             self._thread.start()
-        except BaseException:
+        except BaseException as error:
             with _graalpy_lock:
                 _graalpy_threads.pop(self._thread, None)
             self._native._begin_close()
+            if isinstance(error, Exception) and not isinstance(error, MemoryError):
+                raise ProducerError("failed to start producer poll thread: {}".format(error)) from error
             raise
 
     @_arguments(InvalidArgumentError)

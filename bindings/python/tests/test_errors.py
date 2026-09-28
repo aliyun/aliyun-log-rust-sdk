@@ -91,3 +91,38 @@ def test_numeric_conversion_does_not_swallow_control_exceptions(exception):
     with pytest.raises(exception):
         ProducerConfig(endpoint="example.com", access_key_id="id",
                        access_key_secret="secret", linger=Interrupted())
+
+
+@pytest.mark.parametrize("exception", [RuntimeError, OSError, KeyboardInterrupt, SystemExit, MemoryError])
+def test_poll_thread_start_failure_cleans_up_and_preserves_control_exceptions(monkeypatch, exception):
+    from aliyun_log_producer import producer as module
+
+    native_producers = []
+    native_type = module._BaseProducer
+    failure = exception("thread startup failed")
+
+    def create_native(*args, **kwargs):
+        native = native_type(*args, **kwargs)
+        native_producers.append(native)
+        return native
+
+    def fail_start(thread):
+        raise failure
+
+    monkeypatch.setattr(module, "_BaseProducer", create_native)
+    monkeypatch.setattr(module.threading.Thread, "start", fail_start)
+    config = ProducerConfig(endpoint="example.com", access_key_id="test-id",
+                            access_key_secret="test-secret")
+    expected = ProducerError if exception in (RuntimeError, OSError) else exception
+    with pytest.raises(expected) as caught:
+        Producer(config)
+    if expected is ProducerError:
+        assert caught.value.__cause__ is failure
+        assert "failed to start producer poll thread" in str(caught.value)
+    else:
+        assert caught.value is failure
+    assert len(native_producers) == 1
+    native = native_producers[0]
+    native._wait_closed()
+    assert native._is_closed()
+    assert all(item[0] is not native for item in module._graalpy_threads.values())
