@@ -4,11 +4,10 @@
 
 ## 1. 添加依赖
 
-在应用的 `Cargo.toml` 中添加，并按本地仓库位置调整路径：
+在应用目录中执行：
 
-```toml
-[dependencies]
-aliyun-log-producer = { path = "../aliyun-log-rust-sdk/producer" }
+```sh
+cargo add aliyun-log-producer
 ```
 
 ## 2. 创建、发送和关闭

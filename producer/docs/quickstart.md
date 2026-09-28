@@ -4,11 +4,10 @@
 
 ## 1. Add the dependency
 
-In your application's `Cargo.toml`, adjust the path to your local checkout:
+Run in your application directory:
 
-```toml
-[dependencies]
-aliyun-log-producer = { path = "../aliyun-log-rust-sdk/producer" }
+```sh
+cargo add aliyun-log-producer
 ```
 
 ## 2. Create, send and close
