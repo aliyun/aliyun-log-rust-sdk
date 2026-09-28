@@ -12,8 +12,6 @@ config = ProducerConfig(
     endpoint="cn-hangzhou.log.aliyuncs.com",
     access_key_id=os.environ["ALIBABA_CLOUD_ACCESS_KEY_ID"],
     access_key_secret=os.environ["ALIBABA_CLOUD_ACCESS_KEY_SECRET"],
-    linger=0.1,
-    delivery_timeout=60,
 )
 with Producer(config) as producer:
     producer.writer("my-project", "my-logstore").send({"message": "hello"})

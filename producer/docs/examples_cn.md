@@ -119,8 +119,3 @@ match writer.send(log!("message": "hello")) {
 
 第二次发送仍可能失败，需要由应用处理。使用回调时，重试也要传入回调。
 异步代码应使用异步等待，例如 `tokio::time::sleep`。
-
-## 让日志更快发出
-
-设置 `with_linger(Duration::from_millis(100))`，将等待更多日志的时间缩短为 100 ms；设为 `Duration::ZERO` 则不等待。
-等待越短，请求次数可能越多。其他选项见[配置表](configuration_cn.md)。

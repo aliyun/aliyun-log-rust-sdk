@@ -6,16 +6,14 @@ Use the following code to create a Producer and send logs.
 
 ```rust
 use aliyun_log_producer::{log, Producer, ProducerConfig};
-use std::{env, time::Duration};
+use std::env;
 
 let config = ProducerConfig::default()
     .with_endpoint("cn-hangzhou.log.aliyuncs.com")
     .with_access_key(
         env::var("ALIBABA_CLOUD_ACCESS_KEY_ID")?,
         env::var("ALIBABA_CLOUD_ACCESS_KEY_SECRET")?,
-    )
-    .with_linger(Duration::from_millis(100))
-    .with_delivery_timeout(Duration::from_secs(60));
+    );
 let producer = Producer::create(config)?;
 let writer = producer.writer("my-project", "my-logstore")?;
 writer.send(log!("message": "hello"))?;

@@ -119,8 +119,3 @@ match writer.send(log!("message": "hello")) {
 
 The second send can still fail and needs to be handled by your application. If you use a callback, pass it again when retrying.
 In async code, use an async wait such as `tokio::time::sleep`.
-
-## Send logs sooner
-
-Set `with_linger(Duration::from_millis(100))` to wait up to 100 ms for more logs, or `Duration::ZERO` to skip the wait.
-Shorter waits can mean more requests. See the [configuration table](configuration.md) for other options.

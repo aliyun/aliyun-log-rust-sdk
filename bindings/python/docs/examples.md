@@ -98,8 +98,3 @@ except EnqueueFullError:
 ```
 
 The second send can still fail and needs to be handled by your application. If you use a callback, pass `on_delivery` again when retrying.
-
-## Send logs sooner
-
-Set `linger=0.1` to wait up to 100 ms for more logs, or `0` to skip the wait.
-Shorter waits can mean more requests. See the [configuration table](configuration.md) for other options.
