@@ -51,7 +51,7 @@ For temporary credentials, supply the expiration time so the SDK can refresh the
 | `with_batch_count_threshold(value)` | `usize` | `4096` | Send a batch when its log count reaches this value. Range: 1–40960. |
 | `with_linger(value)` | `Duration` | 2 s | Maximum time to wait for more logs before sending. Zero disables the wait. At most 365 days. |
 | `with_buffer_bytes(value)` | `usize` | 128 MiB (`134217728`) | Buffer budget for pending logs. When full, new logs are rejected and your application can retry later. This is not a process memory limit. |
-| `with_processing_workers(value)` | `usize` | `4` | Number of worker threads processing logs. |
+| `with_processing_workers(value)` | `usize` | `2` | Number of worker threads processing logs. |
 | `with_callback_capacity(value)` | `usize` | `65536` | Maximum logs waiting for callbacks to finish. When full, new sends with callbacks are rejected. |
 | `with_max_attempts(value)` | `u32` | `10` | Maximum sends per batch, including the first attempt. Set to 1 to disable retries. |
 | `with_base_backoff(value)` | `Duration` | 200 ms | Initial wait before retrying. Must not exceed `max_backoff`. Must be greater than zero and at most 365 days. |

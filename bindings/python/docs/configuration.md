@@ -58,7 +58,7 @@ For temporary credentials, set `expires_at` to the expiration time in Unix secon
 | `batch_count_threshold` | `int` | `4096` | Send a batch when its log count reaches this value. Range: 1–40960. |
 | `linger` | `float` | `2.0` s | Maximum time to wait for more logs before sending. Zero disables the wait. In seconds; range: 0–31536000 (365 days). |
 | `buffer_bytes` | `int` | 128 MiB (`134217728`) | Buffer budget for pending logs. When full, new logs are rejected and your application can retry later. This is not a process memory limit. |
-| `processing_workers` | `int` | `4` | Number of worker threads processing logs. |
+| `processing_workers` | `int` | `2` | Number of worker threads processing logs. |
 | `callback_capacity` | `int` | `65536` | Maximum logs waiting for callbacks to finish. When full, new sends with callbacks are rejected. |
 | `max_attempts` | `int` | `10` | Maximum sends per batch, including the first attempt. Set to 1 to disable retries. |
 | `base_backoff` | `float` | `0.2` s | Initial wait before retrying. Must not exceed `max_backoff`. In seconds; must be greater than 0 and at most 31536000 (365 days). |

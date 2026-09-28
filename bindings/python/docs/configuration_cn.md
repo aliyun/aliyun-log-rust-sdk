@@ -58,7 +58,7 @@ config = ProducerConfig(
 | `batch_count_threshold` | `int` | `4096` | 一批日志的条数达到此值时发送。范围 1–40960。 |
 | `linger` | `float` | `2.0` s | 等待更多日志的最长时间，到时发送；0 表示不等待。单位为秒，范围 0–31536000 秒（365 天）。 |
 | `buffer_bytes` | `int` | 128 MiB (`134217728`) | 待发送日志的缓冲容量。达到后，新日志会被拒绝；需要由应用稍后重试。这不是进程内存上限。 |
-| `processing_workers` | `int` | `4` | 处理日志的工作线程数。 |
+| `processing_workers` | `int` | `2` | 处理日志的工作线程数。 |
 | `callback_capacity` | `int` | `65536` | 最多允许多少条日志等待回调完成。达到后，带回调的新日志会被拒绝。 |
 | `max_attempts` | `int` | `10` | 每批日志最多发送多少次，包含首次发送。1 表示不重试。 |
 | `base_backoff` | `float` | `0.2` s | 首次重试前的等待时间，不能超过 `max_backoff`。单位为秒，必须大于 0，不超过 31536000 秒（365 天）。 |

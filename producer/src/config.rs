@@ -70,7 +70,7 @@ impl Default for ProducerConfig {
             batch_count_threshold: 4096,
             linger: Duration::from_millis(2000),
             buffer_bytes: 128 * 1024 * 1024,
-            processing_workers: 4,
+            processing_workers: 2,
             max_attempts: 10,
             base_backoff: Duration::from_millis(200),
             max_backoff: Duration::from_secs(10),
@@ -226,7 +226,7 @@ impl ProducerConfig {
         self.buffer_bytes
     }
 
-    /// Number of threads used to prepare logs for delivery. Defaults to 4.
+    /// Number of threads used to prepare logs for delivery. Defaults to 2.
     pub fn with_processing_workers(mut self, value: usize) -> Self {
         self.processing_workers = value;
         self
