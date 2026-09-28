@@ -56,6 +56,25 @@ def prepare():
         package_version, len(linux), len(desktop), bool(draft_tag)))
 
 
+def check_coverage(wheels):
+    """Require exactly one artifact per matrix entry, including ABI and baseline."""
+    entries = [entry for matrix in build_matrices() for entry in matrix]
+    remaining = {entry["id"] for entry in entries}
+    for wheel in wheels:
+        tags = parse_wheel_filename(wheel.name)[3]
+        matches = [entry for entry in entries if any(
+            "{}-{}".format(tag.interpreter, tag.abi) == entry["tag"]
+            and tag.platform == entry["wheel_platform"] for tag in tags)]
+        if len(matches) != 1:
+            raise ValueError("unexpected ABI/platform/baseline: {}".format(wheel.name))
+        entry = matches[0]
+        if entry["id"] not in remaining:
+            raise ValueError("duplicate build: {}".format(entry["id"]))
+        remaining.remove(entry["id"])
+    if remaining:
+        raise ValueError("missing builds: {}".format(", ".join(sorted(remaining))))
+
+
 def check_dist(directory, expected_version, expected_wheels):
     expected = Version(expected_version)
     wheels = sorted(directory.glob("*.whl"))
@@ -63,6 +82,7 @@ def check_dist(directory, expected_version, expected_wheels):
     if len(wheels) != expected_wheels or len(sources) != 1:
         raise ValueError("expected {} wheels and one sdist, found {} and {}".format(
             expected_wheels, len(wheels), len(sources)))
+    check_coverage(wheels)
     for wheel in wheels:
         name, wheel_version, _, tags = parse_wheel_filename(wheel.name)
         if name != "aliyun-log-producer" or wheel_version != expected:

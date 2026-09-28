@@ -88,7 +88,6 @@ jobs:
           maturin-version: v1.15.0
           target: ${{ matrix.target }}
           manylinux: ${{ matrix.policy }}
-          container: ${{ matrix.container }}
           before-script-linux: |
             if command -v apk >/dev/null; then
               apk add --no-cache perl make
@@ -100,7 +99,7 @@ jobs:
               apt-get update
               apt-get install -y --no-install-recommends perl make
             fi
-          args: --release --manifest-path bindings/python/Cargo.toml --interpreter python${{ matrix.python }} ${{ matrix.features }} --auditwheel repair --out dist
+          args: --release --manifest-path bindings/python/Cargo.toml --interpreter ${{ matrix.interpreter }} ${{ matrix.features }} --auditwheel repair --out dist
       - uses: actions/upload-artifact@v4
         with:
           name: python-release-wheel-${{ matrix.id }}
@@ -126,26 +125,34 @@ jobs:
         id: windows-python
         uses: actions/setup-python@v6
         with:
-          python-version: ${{ matrix.python }}
+          python-version: ${{ matrix.interpreter }}
           architecture: ${{ matrix.arch }}
-      # Use managed interpreters for both macOS architectures.
+      - name: Select GraalPy 25.0 build interpreter
+        if: matrix.kind == 'graalpy'
+        id: graalpy
+        uses: actions/setup-python@v6
+        with:
+          python-version: 'graalpy-25.0'
+      # Use managed CPython/PyPy interpreters for both macOS architectures.
       - uses: astral-sh/setup-uv@v6
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && matrix.kind != 'graalpy'
       - name: Select macOS build interpreter and deployment target
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && matrix.kind != 'graalpy'
         env:
-          BUILD_PYTHON: ${{ matrix.python }}
+          BUILD_PYTHON: ${{ matrix.interpreter }}
           DEPLOYMENT_TARGET: ${{ matrix.deployment }}
         run: |
           uv python install "$BUILD_PYTHON"
           echo "PYO3_PYTHON=$(uv python find --managed-python "$BUILD_PYTHON")" >> "$GITHUB_ENV"
           echo "MACOSX_DEPLOYMENT_TARGET=$DEPLOYMENT_TARGET" >> "$GITHUB_ENV"
       - name: Build desktop wheel
+        env:
+          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.deployment }}
         uses: PyO3/maturin-action@v1
         with:
           maturin-version: v1.15.0
           target: ${{ matrix.target }}
-          args: --release --manifest-path bindings/python/Cargo.toml --interpreter "${{ steps.windows-python.outputs.python-path || env.PYO3_PYTHON }}" ${{ matrix.features }} --out dist
+          args: --release --manifest-path bindings/python/Cargo.toml --interpreter "${{ steps.windows-python.outputs.python-path || steps.graalpy.outputs.python-path || env.PYO3_PYTHON }}" ${{ matrix.features }} --out dist
       - uses: actions/upload-artifact@v4
         with:
           name: python-release-wheel-${{ matrix.id }}

@@ -6,7 +6,11 @@ import hashlib
 from pathlib import Path
 import subprocess
 import sys
+import sysconfig
 import zipfile
+
+from packaging.tags import sys_tags
+from packaging.utils import parse_wheel_filename
 
 from platforms import ABI3_PYTHON, ABI3_TAG
 
@@ -36,7 +40,18 @@ def read_wheel(wheel, expected_version=None):
 
 
 def wheel_prefix(kind):
-    return ABI3_TAG + "-" if kind == "abi3" else "cp{0}{1}-cp{0}{1}-".format(*sys.version_info[:2])
+    implementation = sys.implementation.name
+    free_threaded = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
+    if kind == "abi3":
+        if implementation != "cpython" or free_threaded:
+            raise ValueError("cp38-abi3 requires GIL-enabled CPython")
+        return ABI3_TAG + "-"
+    expected = {"native": "cpython", "free-threaded": "cpython",
+                "pypy": "pypy", "graalpy": "graalpy"}[kind]
+    if implementation != expected or (implementation == "cpython" and free_threaded != (kind == "free-threaded")):
+        raise ValueError("wheel kind does not match the running interpreter")
+    tag = next(sys_tags())
+    return "{}-{}-".format(tag.interpreter, tag.abi)
 
 
 def inspect_wheel(wheel, kind):
@@ -44,6 +59,8 @@ def inspect_wheel(wheel, kind):
     if "-" + prefix not in wheel.name:
         raise ValueError("expected a {} wheel: {}".format(prefix, wheel.name))
     metadata, tags = read_wheel(wheel)
+    if not (parse_wheel_filename(wheel.name)[3] & set(sys_tags())):
+        raise ValueError("wheel is not installable on this interpreter/platform")
     if any(not tag.startswith(prefix) for tag in tags):
         raise ValueError("unexpected WHEEL tags: {}".format(tags))
     print("{} sha256={}".format(wheel.name, hashlib.sha256(wheel.read_bytes()).hexdigest()), flush=True)
@@ -60,7 +77,7 @@ def one_wheel(directory):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("wheel_directory", type=Path)
-    parser.add_argument("--kind", choices=["abi3", "native"], default="abi3")
+    parser.add_argument("--kind", choices=["abi3", "native", "free-threaded", "pypy", "graalpy"], default="abi3")
     parser.add_argument("--audit", action="store_true")
     parser.add_argument("--install", action="store_true")
     args = parser.parse_args()
@@ -68,7 +85,7 @@ def main():
         parser.error("stable ABI auditing applies only to ABI3 wheels")
     try:
         wheel = one_wheel(args.wheel_directory)
-        inspect_wheel(wheel, args.kind)
+        name, version = inspect_wheel(wheel, args.kind)
     except ValueError as error:
         parser.error(str(error))
     if args.audit:
@@ -78,8 +95,12 @@ def main():
         # builds of one distribution. Otherwise pip may keep the previous build.
         subprocess.run([
             sys.executable, "-m", "pip", "install", "--only-binary=:all:",
-            "--force-reinstall", "{}[test]".format(wheel),
+            "--no-deps", "--force-reinstall", str(wheel),
         ], check=True)
+        # Test dependencies may need a source build on PyPy/GraalPy. The SDK
+        # itself must always come from the wheel above, without any fallback.
+        subprocess.run([sys.executable, "-m", "pip", "install",
+                        "{}[test]=={}".format(name, version)], check=True)
         subprocess.run([
             sys.executable, "-c",
             "import sys; from aliyun_log_producer import _native; "

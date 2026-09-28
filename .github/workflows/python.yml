@@ -1,6 +1,7 @@
 name: Python binding
 
 on:
+  workflow_dispatch:
   push:
     branches: ["master"]
   pull_request:
@@ -15,6 +16,7 @@ jobs:
     outputs:
       abi3: ${{ steps.matrix.outputs.abi3 }}
       runtime: ${{ steps.matrix.outputs.runtime }}
+      alternative: ${{ steps.matrix.outputs.alternative }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -45,7 +47,7 @@ jobs:
         with:
           components: clippy, rustfmt
       - name: Install build and ABI audit tools
-        run: python -m pip install 'maturin>=1.14,<2' abi3audit
+        run: python -m pip install 'maturin>=1.14,<2' packaging abi3audit
       - name: Check binding Rust code
         run: |
           cargo fmt -p aliyun-log-producer-python --check
@@ -74,12 +76,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
+        if: matrix.os != 'macos-15' || (matrix.python != '3.8' && matrix.python != '3.9')
         with:
           python-version: ${{ matrix.python }}
+      - uses: astral-sh/setup-uv@v6
+        if: matrix.os == 'macos-15' && (matrix.python == '3.8' || matrix.python == '3.9')
+      - name: Install older macOS ARM64 interpreter
+        if: matrix.os == 'macos-15' && (matrix.python == '3.8' || matrix.python == '3.9')
+        run: |
+          uv venv --python "${{ matrix.python }}" --seed .venv-ci
+          echo "$PWD/.venv-ci/bin" >> "$GITHUB_PATH"
       - uses: dtolnay/rust-toolchain@stable
+      - run: python -m pip install packaging
       - name: Install build tool
         if: matrix.native
-        run: python -m pip install 'maturin>=1.14,<2'
+        run: python -m pip install 'maturin>=1.14,<2' packaging
       - name: Build a wheel for this Python version
         if: matrix.native
         run: python -m maturin build --release --no-default-features --manifest-path bindings/python/Cargo.toml --interpreter python --compatibility linux --out wheelhouse/native
@@ -106,8 +117,47 @@ jobs:
       - name: Verify wheel selection with pip
         run: python bindings/python/ci/check_selection.py wheelhouse/abi3 ${{ matrix.native && 'wheelhouse/native' || '' }}
 
+  alternative-runtimes:
+    needs: check-ci
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.check-ci.outputs.alternative) }}
+    name: runtime (${{ matrix.os }}, ${{ matrix.kind }})
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.setup_python }}
+      - uses: dtolnay/rust-toolchain@stable
+      # Build tooling runs on CPython; maturin receives the target interpreter.
+      # This avoids requiring a maturin wheel for the alternate runtime itself.
+      - name: Record target interpreter
+        shell: bash
+        run: echo "TARGET_PYTHON=$(python -c 'import sys; print(sys.executable)')" >> "$GITHUB_ENV"
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install maturin==1.15.0
+      - name: Build runtime wheel
+        shell: bash
+        run: python -m maturin build --release --no-default-features --manifest-path bindings/python/Cargo.toml --interpreter "$TARGET_PYTHON" --compatibility linux --out wheelhouse/runtime
+      - name: Verify, install and test runtime wheel
+        shell: bash
+        run: |
+          "$TARGET_PYTHON" -m pip install packaging
+          "$TARGET_PYTHON" bindings/python/ci/check_wheel.py wheelhouse/runtime --kind "${{ matrix.kind }}" --install
+          "$TARGET_PYTHON" -m pytest bindings/python/tests -q
+          "$TARGET_PYTHON" bindings/python/ci/check_selection.py wheelhouse/runtime --kind "${{ matrix.kind }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: python-runtime-${{ matrix.os }}-${{ matrix.kind }}
+          path: wheelhouse/runtime/*.whl
+          if-no-files-found: ignore
+
   collect-wheels:
-    needs: [build-abi3, build-and-test]
+    needs: [build-abi3, build-and-test, alternative-runtimes]
     # Preserve available wheels even when another matrix entry failed.
     if: ${{ !cancelled() }}
     runs-on: ubuntu-22.04
@@ -120,6 +170,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           pattern: python-native-*
+          path: wheelhouse
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: python-runtime-*
           path: wheelhouse
           merge-multiple: true
       - uses: actions/upload-artifact@v4

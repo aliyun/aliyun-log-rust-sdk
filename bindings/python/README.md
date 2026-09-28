@@ -5,7 +5,7 @@
 Send logs to Alibaba Cloud Simple Log Service (SLS), with automatic batching,
 retries, and callbacks to check delivery results.
 
-Supports Python 3.8 and later on macOS, Windows and Linux, including x86_64, ARM64 and other architectures. See [platform support](docs/platforms.md) for details.
+Targets CPython 3.8+, PyPy 3.11, and GraalPy 25.0+ / Python 3.12 on macOS, Windows and Linux, with runtime-specific architecture coverage. CPython 3.14t wheels enable the GIL on import. See [platform support](docs/platforms.md) for details.
 
 | Guide | Contents |
 | --- | --- |

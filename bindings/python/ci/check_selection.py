@@ -1,4 +1,4 @@
-"""Verify pip prefers a matching native wheel and falls back to ABI3."""
+"""Verify binary-only pip selection, including CPython native/ABI3 fallback."""
 
 import argparse
 from pathlib import Path
@@ -47,7 +47,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("abi3_directory", type=Path)
     parser.add_argument("native_directory", type=Path, nargs="?")
+    parser.add_argument("--kind", choices=["abi3", "pypy", "graalpy", "free-threaded"], default="abi3")
     args = parser.parse_args()
+    if args.kind != "abi3":
+        if args.native_directory is not None:
+            parser.error("alternate runtimes do not have an ABI3 fallback")
+        wheel = one_wheel(args.abi3_directory)
+        name, version = inspect_wheel(wheel, args.kind)
+        check_selection([args.abi3_directory], wheel, "{}=={}".format(name, version), args.kind)
+        return
     try:
         abi3 = one_wheel(args.abi3_directory)
         name, version = inspect_wheel(abi3, "abi3")
