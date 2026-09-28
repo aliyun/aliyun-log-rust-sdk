@@ -248,7 +248,7 @@ impl Handle {
                     return Ok(resp);
                 }
                 Err(err) => {
-                    debug!("fail to send on {} err: {:?}", i, &err.to_string());
+                    debug!("fail to send on {} err: {:?}", i, err.to_string());
                     if !self.should_retry(&err) || i >= self.config.max_retry {
                         return Err(err);
                     }
