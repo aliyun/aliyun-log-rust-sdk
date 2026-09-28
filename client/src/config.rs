@@ -25,6 +25,7 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct Config {
     pub(crate) endpoint: Endpoint,
+    pub(crate) user_agent: http::HeaderValue,
     pub(crate) credentials: Arc<CredentialsCache>,
     pub(crate) connection_timeout: std::time::Duration,
     pub(crate) request_timeout: std::time::Duration,
@@ -36,6 +37,13 @@ pub struct Config {
 impl Config {
     pub fn builder() -> ConfigBuilder {
         ConfigBuilder::new()
+    }
+
+    /// Override the number of HTTP retries after the initial attempt.
+    /// Set to zero when a producer or another caller owns the retry policy.
+    pub fn with_max_retry(mut self, max_retry: u32) -> Self {
+        self.max_retry = max_retry;
+        self
     }
 }
 
@@ -60,6 +68,7 @@ impl Config {
 #[derive(Default)]
 pub struct ConfigBuilder {
     endpoint: Option<String>,
+    user_agent: Option<String>,
     access_key_id: Option<String>,
     access_key_secret: Option<String>,
     security_token: Option<String>,
@@ -67,11 +76,19 @@ pub struct ConfigBuilder {
     credentials_fetch_timeout: Option<std::time::Duration>,
     connection_timeout: Option<std::time::Duration>,
     request_timeout: Option<std::time::Duration>,
+    max_retry: Option<u32>,
 }
 
 impl ConfigBuilder {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Set HTTP retries after the initial attempt (default: 3).
+    /// Zero disables HTTP retries. Credentials fetching has its own policy.
+    pub fn max_retry(mut self, max_retry: u32) -> Self {
+        self.max_retry = Some(max_retry);
+        self
     }
 
     /// Set the endpoint for the Aliyun Log Service.
@@ -81,6 +98,13 @@ impl ConfigBuilder {
     /// * `endpoint` - The endpoint, e.g. "cn-hangzhou.log.aliyuncs.com"
     pub fn endpoint(mut self, endpoint: impl Into<String>) -> Self {
         self.endpoint = Some(endpoint.into());
+        self
+    }
+
+    /// Set the HTTP User-Agent, replacing the SDK default.
+    /// Invalid HTTP header values are rejected by [`Self::build`].
+    pub fn user_agent(mut self, user_agent: impl Into<String>) -> Self {
+        self.user_agent = Some(user_agent.into());
         self
     }
 
@@ -243,12 +267,18 @@ impl ConfigBuilder {
             ),
         };
 
+        let user_agent = self
+            .user_agent
+            .unwrap_or_else(crate::utils::user_agent)
+            .parse()
+            .map_err(|_| ConfigError::Other(anyhow::anyhow!("invalid user_agent header value")))?;
         Ok(Config {
             endpoint,
+            user_agent,
             credentials: Arc::new(CredentialsCache::new(provider, fetch_timeout)),
             request_timeout,
             connection_timeout,
-            max_retry: DEFAULT_MAX_RETRY,
+            max_retry: self.max_retry.unwrap_or(DEFAULT_MAX_RETRY),
             base_retry_backoff: DEFAULT_BASE_RETRY_BACKOFF,
             max_retry_backoff: DEFAULT_MAX_RETRY_BACKOFF,
         })
@@ -324,3 +354,42 @@ lazy_static! {
 const SCHEME_HTTP: &str = "http://";
 const SCHEME_HTTPS: &str = "https://";
 const DEFAULT_HTTP_SCHEME: &str = "http://";
+
+#[cfg(test)]
+mod retry_tests {
+    use super::*;
+
+    #[test]
+    fn user_agent_defaults_and_validation() {
+        let builder = || {
+            Config::builder()
+                .endpoint("cn-hangzhou.log.aliyuncs.com")
+                .access_key("id", "secret")
+        };
+        assert_eq!(
+            builder().build().unwrap().user_agent,
+            crate::utils::user_agent()
+        );
+        assert_eq!(
+            builder()
+                .user_agent("my-app/1.0")
+                .build()
+                .unwrap()
+                .user_agent,
+            "my-app/1.0"
+        );
+        assert!(builder().user_agent("bad\r\nheader").build().is_err());
+    }
+
+    #[test]
+    fn retry_configuration_is_additive_and_preserves_existing_default() {
+        let builder = || {
+            Config::builder()
+                .endpoint("cn-hangzhou.log.aliyuncs.com")
+                .access_key("id", "secret")
+        };
+        assert_eq!(builder().build().unwrap().max_retry, 3);
+        assert_eq!(builder().max_retry(0).build().unwrap().max_retry, 0);
+        assert_eq!(builder().build().unwrap().with_max_retry(0).max_retry, 0);
+    }
+}

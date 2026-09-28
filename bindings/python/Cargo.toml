@@ -1,0 +1,27 @@
+[package]
+name = "aliyun-log-producer-python"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Python bindings for the Alibaba Cloud SLS Rust producer"
+license = "MIT"
+
+[lib]
+name = "_native"
+crate-type = ["cdylib"]
+
+[features]
+default = ["abi3"]
+abi3 = ["pyo3/abi3-py38"]
+vendored-openssl = ["dep:openssl"]
+
+[dependencies]
+aliyun-log-producer = { path = "../../producer" }
+aliyun-log-rust-sdk = { path = "../../client" }
+pyo3 = "0.29.2"
+tokio = { version = "1.44", features = ["sync"] }
+
+# Release Linux wheels bundle OpenSSL instead of depending on the build host's
+# libssl ABI. This opt-in feature does not change the Rust client's defaults.
+[target.'cfg(target_os = "linux")'.dependencies]
+openssl = { version = "0.10", features = ["vendored"], optional = true }

@@ -472,6 +472,7 @@ impl CredentialsProvider for SharedCredentialsProvider {
 pub(crate) const DEFAULT_FETCH_TIMEOUT: Duration = Duration::from_secs(5);
 const FAILURE_COOLDOWN: Duration = Duration::from_secs(15);
 const MAX_FETCH_ATTEMPTS: u32 = 3;
+const MAX_REFRESH_JITTER: Duration = Duration::from_secs(5);
 
 struct CachedCredentials {
     credentials: Arc<Credentials>,
@@ -503,8 +504,22 @@ impl CachedCredentials {
     }
 
     fn needs_refresh(&self) -> bool {
-        self.refresh_after
-            .is_some_and(|delay| self.fetched_at.elapsed() >= delay)
+        let Some(delay) = self.refresh_after else {
+            return false;
+        };
+        let elapsed = self.fetched_at.elapsed();
+        if elapsed >= delay {
+            return true;
+        }
+        // Each caller samples independently near the refresh boundary. Only
+        // advance refresh, never postpone it beyond the original deadline.
+        // For short-lived credentials keep at least half the cache interval.
+        let window = MAX_REFRESH_JITTER.min(delay / 2);
+        if elapsed < delay.saturating_sub(window) {
+            return false;
+        }
+        let jitter = Duration::from_nanos(fastrand::u64(0..=window.as_nanos() as u64));
+        elapsed >= delay.saturating_sub(jitter)
     }
 }
 

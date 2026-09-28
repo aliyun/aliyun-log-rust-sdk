@@ -1,0 +1,244 @@
+name: Python Release
+
+on:
+  push:
+    tags: ['python-v*']
+  workflow_dispatch:
+    inputs:
+      draft_version:
+        description: 'Draft tag matching bindings/python/Cargo.toml, e.g. python-v0.1.0-beta1; empty builds artifacts only'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: python-release-${{ github.ref }}-${{ inputs.draft_version || 'tag' }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_BUILD_JOBS: '2'
+
+jobs:
+  prepare:
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      tag: ${{ steps.plan.outputs.tag }}
+      draft: ${{ steps.plan.outputs.draft }}
+      prerelease: ${{ steps.plan.outputs.prerelease }}
+      linux: ${{ steps.plan.outputs.linux }}
+      desktop: ${{ steps.plan.outputs.desktop }}
+      wheel_count: ${{ steps.plan.outputs.wheel_count }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install packaging
+      - name: Check version and generate build matrices
+        id: plan
+        env:
+          DRAFT_VERSION: ${{ inputs.draft_version }}
+        run: python bindings/python/ci/release.py prepare
+
+  sdist:
+    needs: prepare
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build source distribution with workspace path dependencies
+        uses: PyO3/maturin-action@v1
+        with:
+          maturin-version: v1.15.0
+          command: sdist
+          args: --manifest-path bindings/python/Cargo.toml --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-release-sdist
+          path: dist/*.tar.gz
+          if-no-files-found: error
+          overwrite: true
+
+  linux:
+    name: wheel / ${{ matrix.id }}
+    needs: prepare
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.prepare.outputs.linux) }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
+      - name: Build portable Linux wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          maturin-version: v1.15.0
+          target: ${{ matrix.target }}
+          manylinux: ${{ matrix.policy }}
+          container: ${{ matrix.container }}
+          before-script-linux: |
+            if command -v apk >/dev/null; then
+              apk add --no-cache perl make
+            elif command -v dnf >/dev/null; then
+              dnf install -y perl-core make
+            elif command -v yum >/dev/null; then
+              yum install -y perl-core make
+            else
+              apt-get update
+              apt-get install -y --no-install-recommends perl make
+            fi
+          args: --release --manifest-path bindings/python/Cargo.toml --interpreter python${{ matrix.python }} ${{ matrix.features }} --auditwheel repair --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-release-wheel-${{ matrix.id }}
+          path: dist/*.whl
+          if-no-files-found: error
+          overwrite: true
+
+  desktop:
+    name: wheel / ${{ matrix.id }}
+    needs: prepare
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.prepare.outputs.desktop) }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Select Windows build interpreter
+        if: runner.os == 'Windows'
+        id: windows-python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+          architecture: ${{ matrix.arch }}
+      # uv supplies managed macOS ARM64 3.8/3.9 interpreters which are absent
+      # from setup-python's hosted tool cache.
+      - uses: astral-sh/setup-uv@v6
+        if: runner.os == 'macOS'
+      - name: Select macOS build interpreter and deployment target
+        if: runner.os == 'macOS'
+        env:
+          BUILD_PYTHON: ${{ matrix.python }}
+          DEPLOYMENT_TARGET: ${{ matrix.deployment }}
+        run: |
+          uv python install "$BUILD_PYTHON"
+          echo "PYO3_PYTHON=$(uv python find --managed-python "$BUILD_PYTHON")" >> "$GITHUB_ENV"
+          echo "MACOSX_DEPLOYMENT_TARGET=$DEPLOYMENT_TARGET" >> "$GITHUB_ENV"
+      - name: Build desktop wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          maturin-version: v1.15.0
+          target: ${{ matrix.target }}
+          args: --release --manifest-path bindings/python/Cargo.toml --interpreter "${{ steps.windows-python.outputs.python-path || env.PYO3_PYTHON }}" ${{ matrix.features }} --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-release-wheel-${{ matrix.id }}
+          path: dist/*.whl
+          if-no-files-found: error
+          overwrite: true
+
+  collect-wheels:
+    needs: [prepare, sdist, linux, desktop]
+    # Keep successful builds available even if another platform failed.
+    if: ${{ !cancelled() && needs.prepare.result == 'success' }}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: python-release-wheel-*
+          path: dist
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: python-release-sdist
+          path: dist
+          merge-multiple: true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-release-builds
+          path: dist/*
+          if-no-files-found: error
+          overwrite: true
+
+  pre-release:
+    # Publishing requires every configured build, including extended targets.
+    needs: [prepare, sdist, linux, desktop, collect-wheels]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-release-builds
+          path: dist
+      - run: python -m pip install packaging twine abi3audit
+      - name: Check completeness, package versions and stable ABI symbols
+        env:
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+          EXPECTED_WHEELS: ${{ needs.prepare.outputs.wheel_count }}
+        run: python bindings/python/ci/release.py check-dist dist --version "$RELEASE_VERSION" --wheels "$EXPECTED_WHEELS"
+      - name: Check distribution metadata
+        run: python -m twine check --strict dist/*.whl dist/*.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-release-dist
+          path: dist/*
+          if-no-files-found: error
+          overwrite: true
+
+  release:
+    needs: [prepare, pre-release]
+    if: needs.prepare.outputs.tag != ''
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-release-dist
+          path: dist
+      - name: Create GitHub release with all wheels and source archive
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          draft: ${{ needs.prepare.outputs.draft == 'true' }}
+          prerelease: ${{ needs.prepare.outputs.prerelease == 'true' }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/SHA256SUMS
+      - uses: actions/setup-python@v6
+        if: github.event_name == 'push' && needs.prepare.outputs.draft == 'false'
+        with:
+          python-version: '3.12'
+      - name: Publish all wheels and sdist to PyPI
+        if: github.event_name == 'push' && needs.prepare.outputs.draft == 'false'
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+          TWINE_NON_INTERACTIVE: '1'
+        run: |
+          python -m pip install twine
+          python -m twine upload --skip-existing dist/*.whl dist/*.tar.gz

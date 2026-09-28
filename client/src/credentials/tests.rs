@@ -170,7 +170,7 @@ async fn nonexpiring_credentials_are_fetched_once() {
 }
 
 #[tokio::test(start_paused = true)]
-async fn refresh_deadline_is_sampled_once_and_refreshes_before_expiration() {
+async fn refresh_baseline_is_stable_and_jitter_does_not_postpone_refresh() {
     for ttl in [60, 3600] {
         let provider = sequence(vec![
             Ok(keys("first").with_expiration(SystemTime::now() + Duration::from_secs(ttl))),
@@ -183,13 +183,13 @@ async fn refresh_deadline_is_sampled_once_and_refreshes_before_expiration() {
         let window = (ttl / 5).min(300);
         assert!(delay >= Duration::from_secs(ttl - window - 1));
         assert!(delay <= Duration::from_secs(ttl - window / 2));
-        advance(delay - Duration::from_millis(1)).await;
+        advance(delay - MAX_REFRESH_JITTER - Duration::from_millis(1)).await;
         assert_eq!(cache.get().await.unwrap().access_key_id(), "first");
         assert_eq!(
             cache.current.load_full().unwrap().refresh_after,
             Some(delay)
         );
-        advance(Duration::from_millis(1)).await;
+        advance(MAX_REFRESH_JITTER + Duration::from_millis(1)).await;
         assert_eq!(cache.get().await.unwrap().access_key_id(), "second");
         assert_eq!(provider.calls.load(Ordering::SeqCst), 2);
     }
@@ -467,4 +467,37 @@ async fn config_clones_share_cache_while_independent_configs_do_not() {
         fixed.credentials.get().await.unwrap().security_token(),
         Some("token")
     );
+}
+
+#[tokio::test(start_paused = true)]
+async fn refresh_check_jitter_is_bounded_and_varies_between_callers() {
+    let entry = CachedCredentials {
+        credentials: Arc::new(keys("jitter")),
+        fetched_at: Instant::now(),
+        refresh_after: Some(Duration::from_secs(20)),
+    };
+    advance(Duration::from_secs(14)).await;
+    assert!((0..100).all(|_| !entry.needs_refresh()));
+    advance(Duration::from_secs(4)).await;
+    fastrand::seed(20260923);
+    let choices: Vec<_> = (0..100).map(|_| entry.needs_refresh()).collect();
+    assert!(choices.contains(&true));
+    assert!(choices.contains(&false));
+    advance(Duration::from_secs(2)).await;
+    assert!((0..100).all(|_| entry.needs_refresh()));
+
+    let short = CachedCredentials {
+        credentials: Arc::new(keys("short")),
+        fetched_at: Instant::now(),
+        refresh_after: Some(Duration::from_millis(100)),
+    };
+    advance(Duration::from_millis(49)).await;
+    assert!((0..100).all(|_| !short.needs_refresh()));
+    advance(Duration::from_millis(51)).await;
+    assert!(short.needs_refresh());
+    let permanent = CachedCredentials {
+        refresh_after: None,
+        ..short
+    };
+    assert!(!permanent.needs_refresh());
 }

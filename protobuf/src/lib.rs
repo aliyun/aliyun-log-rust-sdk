@@ -1,4 +1,5 @@
 mod delegate;
+mod encode;
 mod error;
 mod facade;
 

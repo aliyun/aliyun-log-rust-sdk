@@ -1,26 +1,13 @@
 use std::borrow::Cow;
 
-use crate::{
-    error::{DecodeError, EncodeError},
-    internal, Log, LogContent, LogGroup, LogGroupList, LogTag,
-};
-use quick_protobuf::{BytesReader, MessageRead, MessageWrite, Writer};
+use crate::{error::DecodeError, internal, Log, LogContent, LogGroup, LogGroupList, LogTag};
+use quick_protobuf::{BytesReader, MessageRead};
 
 impl<'a> internal::LogGroupList<'a> {
     pub(crate) fn from_bytes(bytes: &'a [u8]) -> crate::error::Result<Self, crate::Error> {
         let mut reader = BytesReader::from_bytes(bytes);
         internal::LogGroupList::from_reader(&mut reader, bytes)
             .map_err(|e| crate::Error::Decode(DecodeError::from(e)))
-    }
-}
-
-impl internal::LogGroup<'_> {
-    pub(crate) fn to_bytes(&self) -> crate::error::Result<Vec<u8>, crate::Error> {
-        let mut buf = Vec::new();
-        let mut writer = Writer::new(&mut buf);
-        self.write_message(&mut writer)
-            .map_err(|e| crate::Error::Encode(EncodeError::from(e)))?;
-        Ok(buf)
     }
 }
 

@@ -4,6 +4,8 @@
 
 这里是阿里云日志服务官方 RUST SDK 项目。
 
+支持异步攒批、自动重试、callback 和优雅退出的写入接口，见 [Producer 使用说明](producer/README_CN.md)。
+
 [![crates-badge](https://img.shields.io/crates/v/aliyun-log-rust-sdk.svg)](https://crates.io/crates/aliyun-log-rust-sdk)  ![mit-badge](https://img.shields.io/badge/license-MIT-blue.svg) [![Ci](https://github.com/aliyun/aliyun-log-rust-sdk/actions/workflows/rust.yml/badge.svg)](https://github.com/aliyun/aliyun-log-rust-sdk/actions/workflows/rust.yml)
 
 [API列表](docs/api_cn.rst) | [文档](https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/)
