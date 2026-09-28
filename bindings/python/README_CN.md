@@ -9,7 +9,6 @@
 | [快速开始](docs/quickstart_cn.md) | 安装、创建 Producer、发送日志和关闭 |
 | [使用示例](docs/examples_cn.md) | 回调、flush、关闭、时间戳和多个 Logstore |
 | [配置参考](docs/configuration_cn.md) | 配置项、默认值和取值范围 |
-| [开发与发布](docs/developing.md) | 本地构建、测试和 wheel 发布 |
 
 为 endpoint 和凭证创建 Producer，再为各个 Project / Logstore 获取 writer。
 创建后即已启动，不需要额外调用 `start()`。后续发送应复用 Producer 和 writer。

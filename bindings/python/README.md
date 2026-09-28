@@ -10,7 +10,6 @@ retries and optional delivery callbacks.
 | [Quick start](docs/quickstart.md) | Install, create a producer, send a log and close |
 | [Usage examples](docs/examples.md) | Callbacks, flush, shutdown, timestamps and multiple logstores |
 | [Configuration](docs/configuration.md) | Options, defaults and valid values |
-| [Development and release](docs/developing.md) | Local builds, tests and wheel releases |
 
 Create a producer for your endpoint and credentials, then obtain a writer for each
 project/logstore. Creation starts the producer; no separate `start()` call is needed.
