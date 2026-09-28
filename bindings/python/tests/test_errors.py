@@ -77,8 +77,8 @@ def test_signatures_remain_descriptive(make_producer):
         assert list(inspect.signature(Log).parameters) == ["contents", "time", "time_ns"]
         assert "endpoint" in inspect.signature(ProducerConfig).parameters
         assert "access_key_id" in inspect.signature(Credentials).parameters
-    # PyPy does not expose text signatures for native methods either.
-    if sys.implementation.name != "pypy":
+    # PyPy and older GraalPy do not expose native method text signatures.
+    if sys.implementation.name == "cpython" or getattr(writer.send, "__text_signature__", None):
         assert "log" in inspect.signature(writer.send).parameters
     assert list(inspect.signature(Producer).parameters) == ["config"]
 

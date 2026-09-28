@@ -395,7 +395,8 @@ def test_config_repr_redacts_credentials():
 
 
 @pytest.mark.parametrize("explicit_close", [True, False])
-def test_interpreter_shutdown(service, explicit_close):
+@pytest.mark.parametrize("attempt", range(5))
+def test_interpreter_shutdown(service, explicit_close, attempt):
     script = f'''
 import time
 from aliyun_log_producer import Producer, ProducerConfig, Log
@@ -411,11 +412,10 @@ if {explicit_close!r}:
 else:
     time.sleep(0.005)
 '''
-    # Multiple exits exercise finalization while native workers call into Python.
-    for _ in range(5):
-        result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=10)
-        assert result.returncode == 0, result.stderr
-        assert "Fatal Python error" not in result.stderr
+    # Each exit gets its own test timeout, including interpreter startup.
+    result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert "Fatal Python error" not in result.stderr
 
 
 @pytest.mark.parametrize("timestamp,nanoseconds", [(1700000000, 123456789), (0, 0), (2**32 - 1, None)])

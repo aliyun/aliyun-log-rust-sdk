@@ -147,7 +147,7 @@ jobs:
         run: |
           "$TARGET_PYTHON" -m pip install packaging
           "$TARGET_PYTHON" bindings/python/ci/check_wheel.py wheelhouse/runtime --kind "${{ matrix.kind }}" --install
-          "$TARGET_PYTHON" -m pytest bindings/python/tests -q
+          "$TARGET_PYTHON" -m pytest bindings/python/tests -vv --tb=short
           "$TARGET_PYTHON" bindings/python/ci/check_selection.py wheelhouse/runtime --kind "${{ matrix.kind }}"
       - uses: actions/upload-artifact@v4
         if: always()
