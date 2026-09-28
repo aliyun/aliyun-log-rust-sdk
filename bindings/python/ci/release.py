@@ -17,10 +17,8 @@ from packaging.utils import canonicalize_name, parse_wheel_filename
 from packaging.version import Version
 
 
-PYTHONS = ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
-# Official Linux build images no longer ship CPython 3.8. ABI3 covers that
-# runtime; native wheels use the interpreters still present in these images.
-LINUX_PYTHONS = PYTHONS[1:]
+# Tier 1 gets version-specific wheels; every platform also gets cp38-abi3.
+PYTHONS = ["3.10", "3.11", "3.12", "3.13", "3.14"]
 LINUX = [
     ("manylinux2014", "x86_64", "x86_64-unknown-linux-gnu", True),
     ("manylinux2014", "aarch64", "aarch64-unknown-linux-gnu", True),
@@ -35,7 +33,7 @@ LINUX = [
     ("musllinux_1_2", "armv7l", "armv7-unknown-linux-musleabihf", False),
 ]
 DESKTOP = [
-    ("macos-15-intel", "x86_64-apple-darwin", "x64", "10.13", True),
+    ("macos-15-intel", "x86_64-apple-darwin", "x64", "10.13", False),
     ("macos-15", "aarch64-apple-darwin", "arm64", "11.0", True),
     ("windows-2022", "x86_64-pc-windows-msvc", "x64", "", True),
     ("windows-2022", "i686-pc-windows-msvc", "x86", "", False),
@@ -52,7 +50,7 @@ def version():
 def build_matrices():
     linux = []
     for policy, arch, target, native in LINUX:
-        for kind, python in [("abi3", "3.12")] + ([("native", p) for p in LINUX_PYTHONS] if native else []):
+        for kind, python in [("abi3", "3.12")] + ([("native", p) for p in PYTHONS] if native else []):
             linux.append(dict(
                 id="{}-{}-{}-{}".format(policy, arch, kind, python),
                 policy=policy, target=target, python=python,

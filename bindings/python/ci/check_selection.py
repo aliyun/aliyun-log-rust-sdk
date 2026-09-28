@@ -46,18 +46,20 @@ def check_selection(directories, expected, requirement, kind):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("abi3_directory", type=Path)
-    parser.add_argument("native_directory", type=Path)
+    parser.add_argument("native_directory", type=Path, nargs="?")
     args = parser.parse_args()
     try:
         abi3 = one_wheel(args.abi3_directory)
-        native = one_wheel(args.native_directory)
         name, version = inspect_wheel(abi3, "abi3")
-        if inspect_wheel(native, "native") != (name, version):
-            parser.error("both builds must have the same package name and version")
+        if args.native_directory is not None:
+            native = one_wheel(args.native_directory)
+            if inspect_wheel(native, "native") != (name, version):
+                parser.error("both builds must have the same package name and version")
     except ValueError as error:
         parser.error(str(error))
     requirement = "{}=={}".format(name, version)
-    check_selection([args.abi3_directory, args.native_directory], native, requirement, "native")
+    if args.native_directory is not None:
+        check_selection([args.abi3_directory, args.native_directory], native, requirement, "native")
     check_selection([args.abi3_directory], abi3, requirement, "abi3")
 
 

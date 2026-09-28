@@ -56,7 +56,7 @@ jobs:
           path: wheelhouse/*.whl
           if-no-files-found: error
 
-  build-native-and-test:
+  build-and-test:
     needs: build-abi3
     # A failed ABI3 build must not skip native builds or tests on other hosts.
     if: ${{ !cancelled() }}
@@ -66,6 +66,8 @@ jobs:
         os: [ubuntu-22.04, macos-15-intel, windows-2022]
         python: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
     runs-on: ${{ matrix.os }}
+    env:
+      BUILD_NATIVE: ${{ matrix.os != 'macos-15-intel' && matrix.python != '3.8' && matrix.python != '3.9' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -73,14 +75,19 @@ jobs:
           python-version: ${{ matrix.python }}
       - uses: dtolnay/rust-toolchain@stable
       - name: Install build tool
+        if: env.BUILD_NATIVE == 'true'
         run: python -m pip install 'maturin>=1.14,<2'
       - name: Build a wheel for this Python version
+        if: env.BUILD_NATIVE == 'true'
         run: python -m maturin build --release --no-default-features --manifest-path bindings/python/Cargo.toml --interpreter python --compatibility linux --out wheelhouse/native
       - name: Check and install version-specific package
+        if: env.BUILD_NATIVE == 'true'
         run: python bindings/python/ci/check_wheel.py wheelhouse/native --kind native --install
       - name: Test version-specific package
+        if: env.BUILD_NATIVE == 'true'
         run: python -m pytest bindings/python/tests -q
       - uses: actions/upload-artifact@v4
+        if: env.BUILD_NATIVE == 'true'
         with:
           name: python-native-${{ matrix.os }}-${{ matrix.python }}
           path: wheelhouse/native/*.whl
@@ -93,11 +100,11 @@ jobs:
         run: python bindings/python/ci/check_wheel.py wheelhouse/abi3 --install
       - name: Test ABI3 package
         run: python -m pytest bindings/python/tests -q
-      - name: Verify native preference and ABI3 fallback with pip
-        run: python bindings/python/ci/check_selection.py wheelhouse/abi3 wheelhouse/native
+      - name: Verify wheel selection with pip
+        run: python bindings/python/ci/check_selection.py wheelhouse/abi3 ${{ env.BUILD_NATIVE == 'true' && 'wheelhouse/native' || '' }}
 
   collect-wheels:
-    needs: [build-abi3, build-native-and-test]
+    needs: [build-abi3, build-and-test]
     # Preserve available wheels even when another matrix entry failed.
     if: ${{ !cancelled() }}
     runs-on: ubuntu-22.04

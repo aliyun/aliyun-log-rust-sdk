@@ -128,8 +128,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
           architecture: ${{ matrix.arch }}
-      # uv supplies managed macOS ARM64 3.8/3.9 interpreters which are absent
-      # from setup-python's hosted tool cache.
+      # Use managed interpreters for both macOS architectures.
       - uses: astral-sh/setup-uv@v6
         if: runner.os == 'macOS'
       - name: Select macOS build interpreter and deployment target
