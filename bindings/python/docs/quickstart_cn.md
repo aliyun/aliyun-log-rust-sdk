@@ -4,10 +4,10 @@
 
 ## 1. 安装
 
-使用 Python（CPython）3.8 或更高版本。从源码安装需要 Rust 和系统编译工具。在仓库根目录执行：
+使用 Python（CPython）3.8 或更高版本：
 
 ```sh
-python -m pip install ./bindings/python
+python -m pip install aliyun-log-producer
 ```
 
 ## 2. 创建、发送和关闭

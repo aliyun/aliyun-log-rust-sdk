@@ -4,10 +4,10 @@
 
 ## 1. Install
 
-Use Python (CPython) 3.8 or later. Installing from source requires Rust and system build tools. Run this command from the repository root:
+Use Python (CPython) 3.8 or later:
 
 ```sh
-python -m pip install ./bindings/python
+python -m pip install aliyun-log-producer
 ```
 
 ## 2. Create, send and close
