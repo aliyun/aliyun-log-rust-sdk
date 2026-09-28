@@ -45,6 +45,8 @@ Keep callbacks short. Do not close or flush the same Producer from a callback.
 
 ## Wait for logs and close the Producer
 
+`flush()` may block the current thread. Use it only when you need to wait for earlier logs to finish sending, not after every send.
+
 | What you need | Method |
 | --- | --- |
 | Wait for earlier logs to finish sending, then keep sending | `flush()`; does not wait for callbacks |

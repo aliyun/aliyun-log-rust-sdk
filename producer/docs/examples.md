@@ -59,6 +59,8 @@ Keep callbacks short. Do not close or flush the same Producer from a callback.
 
 ## Wait for logs and close the Producer
 
+`flush_blocking()` may block the current thread. Use it only when you need to wait for earlier logs to finish sending, not after every send.
+
 | What you need | Method |
 | --- | --- |
 | Wait for earlier logs to finish sending, then keep sending | `flush_blocking()`; does not wait for callbacks |
@@ -70,7 +72,7 @@ producer.flush_blocking()?;
 producer.close_blocking()?;
 ```
 
-In async functions, use `flush().await` and `close().await`:
+In async functions, use `flush().await` and `close().await` to wait without blocking the current thread:
 
 ```rust
 producer.flush().await?;

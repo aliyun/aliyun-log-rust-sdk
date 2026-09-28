@@ -59,6 +59,8 @@ writer.send_with_callback(log!("message": "hello"), |result| {
 
 ## 等待发送完成与关闭
 
+`flush_blocking()` 可能阻塞当前线程，仅在需要等待之前的日志发送结束时使用，无需每次发送后调用。
+
 | 需要做什么 | 调用方法 |
 | --- | --- |
 | 等之前的日志发送结束，然后继续发送 | `flush_blocking()`，不等待回调 |
@@ -70,7 +72,7 @@ producer.flush_blocking()?;
 producer.close_blocking()?;
 ```
 
-在异步函数中使用 `flush().await` 和 `close().await`：
+在异步函数中使用 `flush().await` 和 `close().await`，等待时不会阻塞当前线程：
 
 ```rust
 producer.flush().await?;
