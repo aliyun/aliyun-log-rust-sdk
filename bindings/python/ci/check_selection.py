@@ -6,7 +6,7 @@ import subprocess
 import sys
 import tempfile
 
-from check_wheel import inspect_wheel, one_wheel
+from check_wheel import inspect_wheel, one_wheel, wheel_prefix
 
 
 def check_selection(directories, expected, requirement, kind):
@@ -29,7 +29,7 @@ def check_selection(directories, expected, requirement, kind):
             sys.executable, "-m", "pip", "install", "--no-index", "--no-deps",
             "--force-reinstall", str(selected),
         ], check=True)
-        prefix = "cp38-abi3-" if kind == "abi3" else "cp{0}{1}-cp{0}{1}-".format(*sys.version_info[:2])
+        prefix = wheel_prefix(kind)
         subprocess.run([
             sys.executable, "-c",
             "from importlib.metadata import distribution; "

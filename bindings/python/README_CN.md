@@ -15,7 +15,7 @@
 
 日志在后台发送。需要确认是否成功时，请使用回调。日志可能乱序或重复；程序异常退出时，尚未发送的日志可能丢失。
 
-## Tier 1：主要平台
+## 提供 Python 版本专用 wheel 的平台
 
 提供 Python 3.10–3.14 的专用 wheel，同时提供 ABI3 wheel，兼容 Python 3.8 及以上版本。
 
@@ -28,7 +28,7 @@
 | Linux (musl / Alpine) | x86_64 | [![musllinux_1_2-x86_64 ABI3](https://raw.githubusercontent.com/aliyun/aliyun-log-rust-sdk/python-build-status/musllinux_1_2-x86_64.svg)](https://github.com/aliyun/aliyun-log-rust-sdk/actions/workflows/python-release.yml) |
 | Linux (musl / Alpine) | ARM64 | [![musllinux_1_2-aarch64 ABI3](https://raw.githubusercontent.com/aliyun/aliyun-log-rust-sdk/python-build-status/musllinux_1_2-aarch64.svg)](https://github.com/aliyun/aliyun-log-rust-sdk/actions/workflows/python-release.yml) |
 
-## Tier 2：兼容平台
+## 仅提供 ABI3 wheel 的平台
 
 仅提供 ABI3 wheel，兼容 Python 3.8 及以上版本。不支持 Python 3.6/3.7。
 

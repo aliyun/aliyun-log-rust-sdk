@@ -12,6 +12,9 @@ permissions:
 jobs:
   check-ci:
     runs-on: ubuntu-22.04
+    outputs:
+      abi3: ${{ steps.matrix.outputs.abi3 }}
+      runtime: ${{ steps.matrix.outputs.runtime }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,14 +24,17 @@ jobs:
         with:
           node-version: "22"
       - run: python -m pip install packaging
+      - name: Generate build matrices
+        id: matrix
+        run: python bindings/python/ci/platforms.py
       - run: python -m unittest discover -s bindings/python/ci -p 'test_*.py'
       - run: node --test bindings/python/ci/test_build_status.cjs
 
   build-abi3:
+    needs: check-ci
     strategy:
       fail-fast: false
-      matrix:
-        os: [ubuntu-22.04, macos-15-intel, windows-2022]
+      matrix: ${{ fromJSON(needs.check-ci.outputs.abi3) }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -57,17 +63,14 @@ jobs:
           if-no-files-found: error
 
   build-and-test:
-    needs: build-abi3
+    needs: [check-ci, build-abi3]
     # A failed ABI3 build must not skip native builds or tests on other hosts.
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && needs.check-ci.result == 'success' }}
     strategy:
       fail-fast: false
-      matrix:
-        os: [ubuntu-22.04, macos-15-intel, windows-2022]
-        python: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+      matrix: ${{ fromJSON(needs.check-ci.outputs.runtime) }}
+    name: build-and-test (${{ matrix.os }}, ${{ matrix.python }})
     runs-on: ${{ matrix.os }}
-    env:
-      BUILD_NATIVE: ${{ matrix.os != 'macos-15-intel' && matrix.python != '3.8' && matrix.python != '3.9' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -75,19 +78,19 @@ jobs:
           python-version: ${{ matrix.python }}
       - uses: dtolnay/rust-toolchain@stable
       - name: Install build tool
-        if: env.BUILD_NATIVE == 'true'
+        if: matrix.native
         run: python -m pip install 'maturin>=1.14,<2'
       - name: Build a wheel for this Python version
-        if: env.BUILD_NATIVE == 'true'
+        if: matrix.native
         run: python -m maturin build --release --no-default-features --manifest-path bindings/python/Cargo.toml --interpreter python --compatibility linux --out wheelhouse/native
       - name: Check and install version-specific package
-        if: env.BUILD_NATIVE == 'true'
+        if: matrix.native
         run: python bindings/python/ci/check_wheel.py wheelhouse/native --kind native --install
       - name: Test version-specific package
-        if: env.BUILD_NATIVE == 'true'
+        if: matrix.native
         run: python -m pytest bindings/python/tests -q
       - uses: actions/upload-artifact@v4
-        if: env.BUILD_NATIVE == 'true'
+        if: matrix.native
         with:
           name: python-native-${{ matrix.os }}-${{ matrix.python }}
           path: wheelhouse/native/*.whl
@@ -101,7 +104,7 @@ jobs:
       - name: Test ABI3 package
         run: python -m pytest bindings/python/tests -q
       - name: Verify wheel selection with pip
-        run: python bindings/python/ci/check_selection.py wheelhouse/abi3 ${{ env.BUILD_NATIVE == 'true' && 'wheelhouse/native' || '' }}
+        run: python bindings/python/ci/check_selection.py wheelhouse/abi3 ${{ matrix.native && 'wheelhouse/native' || '' }}
 
   collect-wheels:
     needs: [build-abi3, build-and-test]

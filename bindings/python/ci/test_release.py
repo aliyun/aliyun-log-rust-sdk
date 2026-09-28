@@ -4,7 +4,7 @@ from pathlib import Path
 import re
 import unittest
 
-from release import build_matrices, status_targets
+from platforms import build_matrices, status_targets
 
 
 class StatusTargetsTest(unittest.TestCase):

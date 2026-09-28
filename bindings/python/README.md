@@ -16,7 +16,7 @@ The Producer starts when you create it. Reuse it and its writers while your appl
 
 Logs are sent in the background. Use a callback to check whether delivery succeeded. Logs may arrive out of order or more than once. Pending logs may be lost if the application crashes.
 
-## Tier 1: Primary platforms
+## Platforms with version-specific wheels
 
 Version-specific wheels for Python 3.10–3.14, plus ABI3 wheels for Python 3.8 and later.
 
@@ -29,7 +29,7 @@ Version-specific wheels for Python 3.10–3.14, plus ABI3 wheels for Python 3.8 
 | Linux (musl / Alpine) | x86_64 | [![musllinux_1_2-x86_64 ABI3](https://raw.githubusercontent.com/aliyun/aliyun-log-rust-sdk/python-build-status/musllinux_1_2-x86_64.svg)](https://github.com/aliyun/aliyun-log-rust-sdk/actions/workflows/python-release.yml) |
 | Linux (musl / Alpine) | ARM64 | [![musllinux_1_2-aarch64 ABI3](https://raw.githubusercontent.com/aliyun/aliyun-log-rust-sdk/python-build-status/musllinux_1_2-aarch64.svg)](https://github.com/aliyun/aliyun-log-rust-sdk/actions/workflows/python-release.yml) |
 
-## Tier 2: Compatibility platforms
+## Platforms with ABI3 wheels only
 
 ABI3 wheels only, for Python 3.8 and later. Python 3.6/3.7 are not supported.
 

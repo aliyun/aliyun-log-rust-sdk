@@ -59,7 +59,7 @@ async function publish({ github, context, core, targets }) {
     }
   }
 
-  // Pagination is required: the release has more than 60 wheel jobs.
+  // Paginate because job counts can grow with platforms and rerun attempts.
   // Include all attempts so rerunning only failures retains successful jobs;
   // platformStatus selects the newest execution of each job by its ID.
   const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
