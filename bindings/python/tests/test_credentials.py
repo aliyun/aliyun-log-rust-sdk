@@ -223,16 +223,23 @@ def test_exit_does_not_wait_for_blocked_python_provider(service):
 import threading
 from aliyun_log_producer import Producer, ProducerConfig
 entered = threading.Event()
+returned = threading.Event()
+results = []
 class Provider:
     def get_credentials(self):
         entered.set()
         threading.Event().wait(60)
+        returned.set()
+# Allow the request to reach the provider even on a busy runner. A 50 ms
+# delivery deadline can expire before the first credential fetch starts.
 p = Producer(ProducerConfig(endpoint={service.endpoint!r}, credentials_provider=Provider(),
-                           linger=0, delivery_timeout=0.05, max_attempts=1))
-p.writer("127", "store").send({{}})
-assert entered.wait(3)
+                           linger=0, delivery_timeout=2, max_attempts=1))
+p.writer("127", "store").send({{}}, on_delivery=results.append)
+assert entered.wait(5), results
 p.close()
+assert len(results) == 1 and results[0].kind == "timeout", results
+assert not returned.is_set(), "the provider must still be blocked at process exit"
 '''
-    result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=8)
+    result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=10)
     assert result.returncode == 0, result.stderr
     assert "Fatal Python error" not in result.stderr

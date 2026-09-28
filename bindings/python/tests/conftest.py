@@ -1,5 +1,6 @@
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from socketserver import TCPServer
 
 import pytest
 
@@ -42,6 +43,12 @@ def service(monkeypatch):
         # The producer opens concurrent connections. HTTPServer's tiny default
         # listen backlog otherwise tests TCP retransmission delays, not bindings.
         request_queue_size = 1024
+
+        def server_bind(self):
+            # HTTPServer resolves its own address with getfqdn(), which can
+            # stall on CI hosts. This loopback fixture needs no DNS name.
+            TCPServer.server_bind(self)
+            self.server_name, self.server_port = self.server_address
 
     server = Server(("127.0.0.1", 0), Handler)
     state.endpoint = f"http://0.0.1:{server.server_port}"
