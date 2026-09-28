@@ -27,7 +27,15 @@ Producer needs credentials to send logs. Choose one of these options.
 
 ### Static credentials
 
-Set the AccessKey ID and AccessKey secret directly, as in the example above.
+Set the AccessKey ID and AccessKey secret directly:
+
+```python
+config = ProducerConfig(
+    endpoint="cn-hangzhou.log.aliyuncs.com",
+    access_key_id=os.environ["ALIBABA_CLOUD_ACCESS_KEY_ID"],
+    access_key_secret=os.environ["ALIBABA_CLOUD_ACCESS_KEY_SECRET"],
+)
+```
 
 For STS temporary credentials, also set `security_token`.
 

@@ -27,7 +27,15 @@ Producer 需要凭证才能写入日志。可以选择以下两种方式。
 
 ### 静态凭证
 
-直接设置 AccessKey ID 和 AccessKey Secret，如上面的示例。
+直接设置 AccessKey ID 和 AccessKey Secret：
+
+```python
+config = ProducerConfig(
+    endpoint="cn-hangzhou.log.aliyuncs.com",
+    access_key_id=os.environ["ALIBABA_CLOUD_ACCESS_KEY_ID"],
+    access_key_secret=os.environ["ALIBABA_CLOUD_ACCESS_KEY_SECRET"],
+)
+```
 
 使用 STS 临时凭证时，还需填写 `security_token`。
 
