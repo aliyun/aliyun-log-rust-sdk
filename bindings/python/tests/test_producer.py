@@ -122,7 +122,8 @@ def test_noncallable_reports_invocation_error(make_producer, monkeypatch):
         assert writer.send(Log([]), on_delivery=invalid) is None
     producer.close()
     assert [item.exc_type for item in failures] == [TypeError, TypeError]
-    assert [item.object for item in failures] == [1, "callback"]
+    # Delivery callbacks may complete in either order.
+    assert {item.object for item in failures} == {1, "callback"}
 
 
 def test_callback_return_values_are_ignored(make_producer, monkeypatch):

@@ -170,30 +170,36 @@ def test_timed_out_fetch_does_not_block_later_provider_calls(service):
             if self.calls == 2:
                 both_entered.set()
             try:
-                assert release.wait(5)
+                assert release.wait(15)
                 return snapshot()
             finally:
                 finished[index].set()
     provider = Provider()
-    settings = config(service, provider, delivery_timeout=0.1)
+    # Leave time for encoding and thread startup before the provider blocks.
+    settings = config(service, provider, delivery_timeout=2)
     first, second = Producer(settings), Producer(settings)
     results = []
     try:
         first.writer("127", "store").send({}, on_delivery=results.append)
-        assert entered.wait(3)
+        assert entered.wait(5), results
         first.close()
+        assert not finished[0].is_set()
         second.writer("127", "store").send({}, on_delivery=results.append)
-        assert both_entered.wait(3)
+        assert both_entered.wait(5), results
         second.close()
         assert provider.calls == 2
         assert len(results) == 2
         assert all(result.kind == "timeout" for result in results)
         assert service.requests == []
+        assert not any(event.is_set() for event in finished)
     finally:
         release.set()
-        assert all(event.wait(3) for event in finished)
         first.close()
         second.close()
+        # Do not wait for a call that never started if an earlier assertion failed.
+        for event in finished[:provider.calls]:
+            event.wait(5)
+    assert all(event.is_set() for event in finished)
 
 
 @pytest.mark.parametrize("failure", ["exception", "wrong_type", "expired"])
