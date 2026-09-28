@@ -41,19 +41,19 @@ For temporary credentials, supply the expiration time so the SDK can refresh the
 
 ## Producer configuration options
 
-| Setter | Default | Meaning and range |
-| --- | --- | --- |
-| `with_endpoint(endpoint)` | Required | SLS endpoint, for example `cn-hangzhou.log.aliyuncs.com`. |
-| `with_user_agent(value)` | `aliyun-log-rust-producer/<version>` | Custom User-Agent sent with HTTP requests to identify your application. |
-| `with_compression(value)` | `Compression::Zstd` | Log compression format: `Compression::Zstd` or `Compression::Lz4`. |
-| `with_generate_pack_id(value)` | `true` | Add PackId for log context queries. Does not deduplicate logs. |
-| `with_batch_size_threshold(value)` | 1 MiB (`1048576`) | Send a batch when its estimated log size reaches this value. Range: 1–8388608 bytes (8 MiB). |
-| `with_batch_count_threshold(value)` | `4096` | Send a batch when its log count reaches this value. Range: 1–40960. |
-| `with_linger(value)` | 2 s | Maximum time to wait for more logs before sending. Zero disables the wait. at most 365 days. |
-| `with_buffer_bytes(value)` | 128 MiB (`134217728`) | Buffer budget for pending logs. When full, new logs are rejected and your application can retry later. This is not a process memory limit. |
-| `with_processing_workers(value)` | `4` | Number of worker threads processing logs. |
-| `with_callback_capacity(value)` | `65536` | Maximum logs waiting for callbacks to finish. When full, new sends with callbacks are rejected. |
-| `with_max_attempts(value)` | `10` | Maximum sends per batch, including the first attempt. Set to 1 to disable retries. |
-| `with_base_backoff(value)` | 200 ms | Initial wait before retrying. Must not exceed `max_backoff`. must be greater than zero and at most 365 days. |
-| `with_max_backoff(value)` | 10 s | Maximum wait between retries. Actual waits are randomized. must be greater than zero and at most 365 days. |
-| `with_delivery_timeout(value)` | 600 s | Total time allowed to send a batch, including batching, requests, and retries. must be greater than zero and at most 365 days. |
+| Setter | Type | Default | Meaning and range |
+| --- | --- | --- | --- |
+| `with_endpoint(endpoint)` | `impl Into<String>` | Required | SLS endpoint, for example `cn-hangzhou.log.aliyuncs.com`. |
+| `with_user_agent(value)` | `impl Into<String>` | `aliyun-log-rust-producer/<version>` | Custom User-Agent sent with HTTP requests to identify your application. |
+| `with_compression(value)` | `Compression` | `Compression::Zstd` | Log compression format: `Compression::Zstd` or `Compression::Lz4`. |
+| `with_generate_pack_id(value)` | `bool` | `true` | Add PackId for log context queries. Does not deduplicate logs. |
+| `with_batch_size_threshold(value)` | `usize` | 1 MiB (`1048576`) | Send a batch when its estimated log size reaches this value. Range: 1–8388608 bytes (8 MiB). |
+| `with_batch_count_threshold(value)` | `usize` | `4096` | Send a batch when its log count reaches this value. Range: 1–40960. |
+| `with_linger(value)` | `Duration` | 2 s | Maximum time to wait for more logs before sending. Zero disables the wait. At most 365 days. |
+| `with_buffer_bytes(value)` | `usize` | 128 MiB (`134217728`) | Buffer budget for pending logs. When full, new logs are rejected and your application can retry later. This is not a process memory limit. |
+| `with_processing_workers(value)` | `usize` | `4` | Number of worker threads processing logs. |
+| `with_callback_capacity(value)` | `usize` | `65536` | Maximum logs waiting for callbacks to finish. When full, new sends with callbacks are rejected. |
+| `with_max_attempts(value)` | `u32` | `10` | Maximum sends per batch, including the first attempt. Set to 1 to disable retries. |
+| `with_base_backoff(value)` | `Duration` | 200 ms | Initial wait before retrying. Must not exceed `max_backoff`. Must be greater than zero and at most 365 days. |
+| `with_max_backoff(value)` | `Duration` | 10 s | Maximum wait between retries. Actual waits are randomized. Must be greater than zero and at most 365 days. |
+| `with_delivery_timeout(value)` | `Duration` | 600 s | Total time allowed to send a batch, including batching, requests, and retries. Must be greater than zero and at most 365 days. |

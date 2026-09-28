@@ -40,19 +40,19 @@ Producer 需要凭证才能写入日志。可以选择以下两种方式。
 
 ## Producer 配置选项
 
-| 参数 | 默认值 | 说明与范围 |
-| --- | --- | --- |
-| `endpoint` | 必填 | SLS 服务地址，例如 `cn-hangzhou.log.aliyuncs.com`。 |
-| `user_agent` | `aliyun-log-python-producer/<version>` | 自定义 HTTP 请求中的 User-Agent，用于标识应用。 |
-| `compression` | `"zstd"` | 日志压缩方式，可选 `"zstd"` 或 `"lz4"`。 |
-| `generate_pack_id` | `True` | 添加 PackId，便于查询日志上下文；不能用于日志去重。 |
-| `batch_size_threshold` | 1 MiB (`1048576`) | 一批日志的预估大小达到此值时发送。范围 1–8388608 字节（8 MiB）。 |
-| `batch_count_threshold` | `4096` | 一批日志的条数达到此值时发送。范围 1–40960。 |
-| `linger` | `2.0` s | 等待更多日志的最长时间，到时发送；0 表示不等待。单位为秒，范围 0–31536000 秒（365 天）。 |
-| `buffer_bytes` | 128 MiB (`134217728`) | 待发送日志的缓冲容量。达到后，新日志会被拒绝；需要由应用稍后重试。这不是进程内存上限。 |
-| `processing_workers` | `4` | 处理日志的工作线程数。 |
-| `callback_capacity` | `65536` | 最多允许多少条日志等待回调完成。达到后，带回调的新日志会被拒绝。 |
-| `max_attempts` | `10` | 每批日志最多发送多少次，包含首次发送。1 表示不重试。 |
-| `base_backoff` | `0.2` s | 首次重试前的等待时间，不能超过 `max_backoff`。单位为秒，必须大于 0，不超过 31536000 秒（365 天）。 |
-| `max_backoff` | `10.0` s | 重试之间的最长等待时间，实际等待时间会随机调整。单位为秒，必须大于 0，不超过 31536000 秒（365 天）。 |
-| `delivery_timeout` | `600.0` s | 每批日志允许的总发送时间，包含等待更多日志、发送请求和重试。单位为秒，必须大于 0，不超过 31536000 秒（365 天）。 |
+| 参数 | 类型 | 默认值 | 说明与范围 |
+| --- | --- | --- | --- |
+| `endpoint` | `str` | 必填 | SLS 服务地址，例如 `cn-hangzhou.log.aliyuncs.com`。 |
+| `user_agent` | `str` | `aliyun-log-python-producer/<version>` | 自定义 HTTP 请求中的 User-Agent，用于标识应用。 |
+| `compression` | `str` | `"zstd"` | 日志压缩方式，可选 `"zstd"` 或 `"lz4"`。 |
+| `generate_pack_id` | `bool` | `True` | 添加 PackId，便于查询日志上下文；不能用于日志去重。 |
+| `batch_size_threshold` | `int` | 1 MiB (`1048576`) | 一批日志的预估大小达到此值时发送。范围 1–8388608 字节（8 MiB）。 |
+| `batch_count_threshold` | `int` | `4096` | 一批日志的条数达到此值时发送。范围 1–40960。 |
+| `linger` | `float` | `2.0` s | 等待更多日志的最长时间，到时发送；0 表示不等待。单位为秒，范围 0–31536000 秒（365 天）。 |
+| `buffer_bytes` | `int` | 128 MiB (`134217728`) | 待发送日志的缓冲容量。达到后，新日志会被拒绝；需要由应用稍后重试。这不是进程内存上限。 |
+| `processing_workers` | `int` | `4` | 处理日志的工作线程数。 |
+| `callback_capacity` | `int` | `65536` | 最多允许多少条日志等待回调完成。达到后，带回调的新日志会被拒绝。 |
+| `max_attempts` | `int` | `10` | 每批日志最多发送多少次，包含首次发送。1 表示不重试。 |
+| `base_backoff` | `float` | `0.2` s | 首次重试前的等待时间，不能超过 `max_backoff`。单位为秒，必须大于 0，不超过 31536000 秒（365 天）。 |
+| `max_backoff` | `float` | `10.0` s | 重试之间的最长等待时间，实际等待时间会随机调整。单位为秒，必须大于 0，不超过 31536000 秒（365 天）。 |
+| `delivery_timeout` | `float` | `600.0` s | 每批日志允许的总发送时间，包含等待更多日志、发送请求和重试。单位为秒，必须大于 0，不超过 31536000 秒（365 天）。 |
