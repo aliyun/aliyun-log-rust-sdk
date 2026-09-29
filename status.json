@@ -1,8 +1,8 @@
 {
-  "run_id": 36551725011,
+  "run_id": 36573230758,
   "run_attempt": 1,
-  "url": "https://github.com/aliyun/aliyun-log-rust-sdk/actions/runs/36551725011",
-  "commit": "c92d437879c0964b88af7bf381f9b726b09b3c1a",
+  "url": "https://github.com/aliyun/aliyun-log-rust-sdk/actions/runs/36573230758",
+  "commit": "450464536bc911f46a3ea5b61ede7c6d98cf060c",
   "platforms": {
     "manylinux2014-x86_64": {
       "status": "passing",
@@ -35,7 +35,7 @@
       ]
     },
     "manylinux_2_28-x86_64-graalpy": {
-      "status": "failing",
+      "status": "passing",
       "expected_jobs": [
         "wheel / manylinux_2_28-x86_64-graalpy-3.13"
       ]
@@ -65,7 +65,7 @@
       ]
     },
     "manylinux_2_28-aarch64-graalpy": {
-      "status": "failing",
+      "status": "passing",
       "expected_jobs": [
         "wheel / manylinux_2_28-aarch64-graalpy-3.13"
       ]
