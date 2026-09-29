@@ -20,7 +20,6 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  CARGO_BUILD_JOBS: '2'
 
 jobs:
   prepare:
@@ -75,14 +74,10 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
-      max-parallel: 4
       matrix: ${{ fromJSON(needs.prepare.outputs.linux) }}
     steps:
       - uses: actions/checkout@v5
-      - uses: docker/setup-qemu-action@v3
-        with:
-          platforms: all
-      - name: Build portable Linux wheel
+      - name: Build portable Linux wheels
         uses: PyO3/maturin-action@v1
         with:
           maturin-version: v1.15.0
@@ -99,15 +94,22 @@ jobs:
               apt-get update
               apt-get install -y --no-install-recommends perl make
             fi
-            if [ "${{ matrix.kind }}" = graalpy ]; then
-              bash bindings/python/ci/install_graalpy_linux.sh "${{ matrix.graalpy_url }}" "${{ matrix.graalpy_sha256 }}"
-            fi
-          args: --release --manifest-path bindings/python/Cargo.toml --interpreter ${{ matrix.interpreter }} ${{ matrix.features }} --auditwheel repair --out dist
+          args: --release --manifest-path bindings/python/Cargo.toml --interpreter ${{ matrix.interpreters }} ${{ matrix.features }} --auditwheel repair --out dist
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install packaging
+      - name: Check every wheel in this build group
+        env:
+          BUILD_GROUP: ${{ matrix.id }}
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+        run: python bindings/python/ci/release.py check-group dist --group "$BUILD_GROUP" --version "$RELEASE_VERSION"
       - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
         with:
           name: python-release-wheel-${{ matrix.id }}
           path: dist/*.whl
-          if-no-files-found: error
+          if-no-files-found: ignore
           overwrite: true
 
   desktop:
@@ -116,51 +118,49 @@ jobs:
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
-      max-parallel: 4
       matrix: ${{ fromJSON(needs.prepare.outputs.desktop) }}
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-      - name: Select Windows build interpreter
-        if: runner.os == 'Windows'
-        id: windows-python
-        uses: actions/setup-python@v6
+      - uses: astral-sh/setup-uv@v6
         with:
-          python-version: ${{ matrix.interpreter }}
-          architecture: ${{ matrix.arch }}
+          enable-cache: false
+      - name: Select managed build interpreters
+        if: matrix.kind != 'graalpy'
+        id: interpreters
+        shell: bash
+        env:
+          BUILD_GROUP: ${{ matrix.id }}
+        run: uv run --no-project --python 3.12 --with packaging python bindings/python/ci/release.py desktop-interpreters "$BUILD_GROUP"
       - name: Select GraalPy build interpreter
         if: matrix.kind == 'graalpy'
         id: graalpy
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.setup_python }}
-      # Use managed CPython/PyPy interpreters for both macOS architectures.
-      - uses: astral-sh/setup-uv@v6
-        if: runner.os == 'macOS' && matrix.kind != 'graalpy'
-      - name: Select macOS build interpreter and deployment target
-        if: runner.os == 'macOS' && matrix.kind != 'graalpy'
-        env:
-          BUILD_PYTHON: ${{ matrix.interpreter }}
-          DEPLOYMENT_TARGET: ${{ matrix.deployment }}
-        run: |
-          uv python install "$BUILD_PYTHON"
-          echo "PYO3_PYTHON=$(uv python find --managed-python "$BUILD_PYTHON")" >> "$GITHUB_ENV"
-          echo "MACOSX_DEPLOYMENT_TARGET=$DEPLOYMENT_TARGET" >> "$GITHUB_ENV"
-      - name: Build desktop wheel
+          architecture: ${{ matrix.arch }}
+      - name: Build desktop wheels
         env:
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.deployment }}
         uses: PyO3/maturin-action@v1
         with:
           maturin-version: v1.15.0
           target: ${{ matrix.target }}
-          args: --release --manifest-path bindings/python/Cargo.toml --interpreter "${{ steps.windows-python.outputs.python-path || steps.graalpy.outputs.python-path || env.PYO3_PYTHON }}" ${{ matrix.features }} --out dist
+          args: --release --manifest-path bindings/python/Cargo.toml --interpreter ${{ steps.interpreters.outputs.interpreters || format('"{0}"', steps.graalpy.outputs.python-path) }} ${{ matrix.features }} --out dist
+      - name: Check every wheel in this build group
+        shell: bash
+        env:
+          BUILD_GROUP: ${{ matrix.id }}
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+        run: uv run --no-project --python 3.12 --with packaging python bindings/python/ci/release.py check-group dist --group "$BUILD_GROUP" --version "$RELEASE_VERSION"
       - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
         with:
           name: python-release-wheel-${{ matrix.id }}
           path: dist/*.whl
-          if-no-files-found: error
+          if-no-files-found: ignore
           overwrite: true
 
   collect-wheels:
@@ -175,6 +175,7 @@ jobs:
           path: dist
           merge-multiple: true
       - uses: actions/download-artifact@v4
+        if: needs.sdist.result == 'success'
         with:
           pattern: python-release-sdist
           path: dist
