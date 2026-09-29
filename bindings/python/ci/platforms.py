@@ -11,12 +11,8 @@ GRAALPY_RELEASES = {"3.12": "25.2.4", "3.13": "25.4.4"}
 GRAALPY_ABIS = {"3.12": "250", "3.13": "253"}
 # 25.0.1 is the last upstream macOS Intel distribution.
 GRAALPY_MACOS_INTEL = "25.0.1"
-GRAALPY_LINUX_SHA256 = {
-    ("3.12", "x86_64"): "b3d0766ae6d55daa15f0db1f6c884383d7eec506b186d0ba2f702523a78ff28d",
-    ("3.12", "aarch64"): "e57472272b1b659ae6ac972117723b0515a49cc9577688ed5563919793170d67",
-    ("3.13", "x86_64"): "8b72e6e513d06976e5c8e051228d69d541fde76d05d5f907eaef4bb31db83af4",
-    ("3.13", "aarch64"): "1323dc064583efd1d6b696d3a9f9e4b1ff8facd0f7cc2b69fe0a0bf7ef06ea1a",
-}
+# PyPy 7.3.23 implements Python 3.11.15; PyPy 8 changes the wheel ABI to pp80.
+PYPY_BUILD_PYTHON = "3.11.15"
 ABI3_ONLY_PYTHONS = [ABI3_PYTHON]
 NATIVE_PYTHONS = ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
 # Let maturin-action select its maintained cross images, as pydantic-core does.
@@ -80,20 +76,13 @@ def build_matrices():
             variants.extend(("graalpy", version) for version in GRAALPY_RELEASES)
         for kind, python in variants:
             entry = runtime(kind, python)
+            baseline = "manylinux_2_28" if kind == "graalpy" and python == "3.13" else policy
             entry.update(
-                id="{}-{}-{}-{}".format(policy, arch, kind, python),
-                platform="{}-{}".format(policy, arch), policy=policy,
-                target=target, wheel_platform="{}_{}".format(policy, arch),
+                id="{}-{}-{}-{}".format(baseline, arch, kind, python),
+                platform="{}-{}".format(baseline, arch), policy=baseline,
+                target=target, wheel_platform="{}_{}".format(baseline, arch),
                 features=(entry["features"] + " --features vendored-openssl").strip(),
             )
-            if kind == "graalpy":
-                release = GRAALPY_RELEASES[python]
-                machine = "amd64" if arch == "x86_64" else arch
-                entry.update(
-                    interpreter="/opt/sls-graalpy/bin/graalpy",
-                    graalpy_url="https://github.com/oracle/graalpython/releases/download/graal-{0}/graalpy{1}-{0}-linux-{2}.tar.gz".format(release, python, machine),
-                    graalpy_sha256=GRAALPY_LINUX_SHA256[python, arch],
-                )
             linux.append(entry)
     for runner, target, arch, deployment in DESKTOP:
         versions = NATIVE_PYTHONS[2:] if target == "aarch64-pc-windows-msvc" else NATIVE_PYTHONS
@@ -118,15 +107,44 @@ def build_matrices():
     return linux, desktop
 
 
+def build_groups():
+    matrices = []
+    for matrix in build_matrices():
+        groups = {}
+        for entry in matrix:
+            group_id = "{}-{}".format(entry["platform"], entry["kind"])
+            if entry["kind"] == "graalpy":
+                group_id += "-" + entry["python"]
+            if group_id not in groups:
+                groups[group_id] = {key: entry[key] for key in (
+                    "platform", "kind", "target", "features", "policy", "runner", "arch", "deployment"
+                ) if key in entry}
+                groups[group_id].update(id=group_id, artifact_ids=[], interpreters=[], python_requests=[])
+                if entry["kind"] == "graalpy" and "runner" in entry:
+                    groups[group_id]["setup_python"] = entry["setup_python"]
+            group = groups[group_id]
+            group["artifact_ids"].append(entry["id"])
+            group["interpreters"].append(entry["interpreter"])
+            if "runner" in entry and entry["kind"] != "graalpy":
+                system = "windows" if "windows" in entry["target"] else "darwin"
+                arch = {"x64": "x86_64", "x86": "i686", "arm64": "aarch64"}[entry["arch"]]
+                implementation = "pypy" if entry["kind"] == "pypy" else "cpython"
+                python = PYPY_BUILD_PYTHON if entry["kind"] == "pypy" else entry["python"].replace("t", "+freethreaded")
+                group["python_requests"].append("{}-{}-{}-{}-none".format(implementation, python, system, arch))
+        for group in groups.values():
+            group["interpreters"] = " ".join(group["interpreters"])
+        matrices.append(list(groups.values()))
+    return tuple(matrices)
+
+
 def status_targets():
     targets = {}
-    for matrix in build_matrices():
-        for entry in matrix:
-            # Preserve ABI3 badge names; give the other runtimes separate badges.
-            key = entry["platform"]
-            if entry["kind"] != "abi3":
-                key += "-" + entry["kind"]
-            targets.setdefault(key, []).append("wheel / " + entry["id"])
+    for matrix in build_groups():
+        for group in matrix:
+            key = group["platform"]
+            if group["kind"] != "abi3":
+                key += "-" + group["kind"]
+            targets.setdefault(key, []).append("wheel / " + group["id"])
     return targets
 
 
@@ -149,6 +167,7 @@ def ci_matrices():
             alternative.append(entry)
     return {
         "abi3": {"include": [dict(os=host) for host in hosts]},
+        "native": {"include": [entry for entry in regular if entry["native"]]},
         "runtime": {"include": regular},
         "alternative": {"include": alternative},
     }

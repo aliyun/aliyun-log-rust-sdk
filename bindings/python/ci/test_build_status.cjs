@@ -2,9 +2,23 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { platformStatus, badge, isOlder, publish } = require('./build_status.cjs');
 
-const abi3 = 'wheel / manylinux2014-x86_64-abi3-3.12';
-const native = 'wheel / manylinux2014-x86_64-native-3.12';
+const abi3 = 'wheel / manylinux2014-x86_64-abi3';
+const native = 'wheel / manylinux2014-x86_64-native';
 const job = (name, conclusion, id = 1) => ({ name, conclusion, id });
+
+test('a grouped native build cannot pass on legacy per-interpreter results', () => {
+  const oldJobs = ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14'].map(version => job(`${native}-${version}`, 'success'));
+  assert.equal(platformStatus([native], oldJobs), 'incomplete');
+  assert.equal(platformStatus([native], [...oldJobs, job(native, 'failure', 20)]), 'failing');
+  assert.equal(platformStatus([native], [...oldJobs, job(native, 'failure', 20), job(native, 'success', 30)]), 'passing');
+});
+
+test('GraalPy badges require every version group on that platform', () => {
+  const groups = ['3.12', '3.13'].map(version => `wheel / aarch64-apple-darwin-graalpy-${version}`);
+  assert.equal(platformStatus(groups, [job(groups[0], 'success')]), 'incomplete');
+  assert.equal(platformStatus(groups, [job(groups[0], 'success'), job(groups[1], 'failure')]), 'failing');
+  assert.equal(platformStatus(groups, groups.map(name => job(name, 'success'))), 'passing');
+});
 
 test('ABI3 badges are independent of native and other-platform failures', () => {
   assert.equal(platformStatus([abi3], [job(abi3, 'success'), job(native, 'failure'), job('other platform', 'failure')]), 'passing');
