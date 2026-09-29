@@ -170,7 +170,7 @@ async fn nonexpiring_credentials_are_fetched_once() {
 }
 
 #[tokio::test(start_paused = true)]
-async fn refresh_deadline_is_sampled_once_and_refreshes_before_expiration() {
+async fn refresh_baseline_is_stable_and_jitter_does_not_postpone_refresh() {
     for ttl in [60, 3600] {
         let provider = sequence(vec![
             Ok(keys("first").with_expiration(SystemTime::now() + Duration::from_secs(ttl))),
@@ -183,13 +183,13 @@ async fn refresh_deadline_is_sampled_once_and_refreshes_before_expiration() {
         let window = (ttl / 5).min(300);
         assert!(delay >= Duration::from_secs(ttl - window - 1));
         assert!(delay <= Duration::from_secs(ttl - window / 2));
-        advance(delay - Duration::from_millis(1)).await;
+        advance(delay - MAX_REFRESH_JITTER - Duration::from_millis(1)).await;
         assert_eq!(cache.get().await.unwrap().access_key_id(), "first");
         assert_eq!(
             cache.current.load_full().unwrap().refresh_after,
             Some(delay)
         );
-        advance(Duration::from_millis(1)).await;
+        advance(MAX_REFRESH_JITTER + Duration::from_millis(1)).await;
         assert_eq!(cache.get().await.unwrap().access_key_id(), "second");
         assert_eq!(provider.calls.load(Ordering::SeqCst), 2);
     }
@@ -467,4 +467,143 @@ async fn config_clones_share_cache_while_independent_configs_do_not() {
         fixed.credentials.get().await.unwrap().security_token(),
         Some("token")
     );
+}
+
+#[tokio::test(start_paused = true)]
+async fn refresh_check_jitter_is_bounded_and_varies_between_callers() {
+    let entry = CachedCredentials {
+        credentials: Arc::new(keys("jitter")),
+        fetched_at: Instant::now(),
+        refresh_after: Some(Duration::from_secs(20)),
+    };
+    advance(Duration::from_secs(14)).await;
+    assert!((0..100).all(|_| !entry.needs_refresh()));
+    advance(Duration::from_secs(4)).await;
+    fastrand::seed(20260923);
+    let choices: Vec<_> = (0..100).map(|_| entry.needs_refresh()).collect();
+    assert!(choices.contains(&true));
+    assert!(choices.contains(&false));
+    advance(Duration::from_secs(2)).await;
+    assert!((0..100).all(|_| entry.needs_refresh()));
+
+    let short = CachedCredentials {
+        credentials: Arc::new(keys("short")),
+        fetched_at: Instant::now(),
+        refresh_after: Some(Duration::from_millis(100)),
+    };
+    advance(Duration::from_millis(49)).await;
+    assert!((0..100).all(|_| !short.needs_refresh()));
+    advance(Duration::from_millis(51)).await;
+    assert!(short.needs_refresh());
+    let permanent = CachedCredentials {
+        refresh_after: None,
+        ..short
+    };
+    assert!(!permanent.needs_refresh());
+}
+
+#[test]
+fn external_snapshots_are_shared_consistent_and_redacted() {
+    let credentials = ExternalManagedCredentials::new(
+        Credentials::new("initial-id", "initial-secret")
+            .unwrap()
+            .with_security_token("initial-token"),
+    );
+    let initial = credentials.get();
+    let writer = credentials.clone();
+    let reader = credentials.clone();
+    let barrier = std::sync::Barrier::new(2);
+    std::thread::scope(|scope| {
+        scope.spawn(|| {
+            barrier.wait();
+            for i in 0..2000 {
+                let value = format!("version-{i}");
+                writer.set(
+                    Credentials::new(&value, &value)
+                        .unwrap()
+                        .with_security_token(&value),
+                );
+            }
+        });
+        barrier.wait();
+        for _ in 0..2000 {
+            let snapshot = reader.get();
+            if snapshot.access_key_id() != "initial-id" {
+                assert_eq!(snapshot.access_key_id(), snapshot.access_key_secret());
+                assert_eq!(snapshot.security_token(), Some(snapshot.access_key_id()));
+            }
+        }
+    });
+    assert_eq!(credentials.get().access_key_id(), "version-1999");
+    assert_eq!(initial.access_key_id(), "initial-id");
+    assert_eq!(initial.access_key_secret(), "initial-secret");
+    assert_eq!(initial.security_token(), Some("initial-token"));
+    let debug = format!("{credentials:?}");
+    assert!(!debug.contains("version-"));
+    assert!(!debug.contains("initial-"));
+}
+
+#[tokio::test]
+async fn external_configs_read_current_snapshot_without_cache_or_expiration_policy() {
+    use crate::{Client, Config, FromConfig};
+    let credentials = ExternalManagedCredentials::new(keys("initial"));
+    let config = || {
+        Config::builder()
+            .endpoint("localhost")
+            .external_managed_credentials(credentials.clone())
+            .build()
+            .unwrap()
+    };
+    let first = config();
+    let cloned = first.clone();
+    let independent = config();
+    let old = first.credentials.get().await.unwrap();
+    // An absent expiration must not cause the initial snapshot to be cached forever.
+    credentials.set(keys("updated"));
+    for config in [&first, &cloned, &independent] {
+        assert!(Arc::ptr_eq(
+            &config.credentials.get().await.unwrap(),
+            &credentials.get()
+        ));
+        assert_eq!(
+            config.credentials.get().await.unwrap().access_key_id(),
+            "updated"
+        );
+    }
+    assert_eq!(old.access_key_id(), "initial");
+    // Expiration is metadata in external mode: neither get nor set initiates renewal.
+    credentials.set(keys("external-expired").with_expiration(SystemTime::UNIX_EPOCH));
+    assert_eq!(
+        first.credentials.get().await.unwrap().access_key_id(),
+        "external-expired"
+    );
+    drop(Client::from_config(first).unwrap());
+    drop(cloned);
+    drop(independent);
+    credentials.set(keys("after-client-drop"));
+    assert_eq!(credentials.get().access_key_id(), "after-client-drop");
+}
+
+#[test]
+fn external_config_rejects_other_sources_in_either_setter_order() {
+    use crate::Config;
+    let credentials = ExternalManagedCredentials::new(keys("external"));
+    let base = || Config::builder().endpoint("localhost");
+    for external_first in [false, true] {
+        for source in 0..3 {
+            let mut builder = base();
+            if external_first {
+                builder = builder.external_managed_credentials(credentials.clone());
+            }
+            builder = match source {
+                0 => builder.access_key("id", "secret"),
+                1 => builder.sts("id", "secret", "token"),
+                _ => builder.credentials_provider(StaticCredentialsProvider::new(keys("provider"))),
+            };
+            if !external_first {
+                builder = builder.external_managed_credentials(credentials.clone());
+            }
+            assert!(builder.build().is_err());
+        }
+    }
 }

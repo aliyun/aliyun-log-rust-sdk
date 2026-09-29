@@ -10,3 +10,11 @@
 AGENTS.md
 .agents
 .qoder
+
+# Local producer benchmarks: harnesses, experiments, profiling and results.
+/benchmarks/
+
+# Local design notes.
+/producer/docs/design/
+/bindings/python/docs/design.md
+/bindings/python/docs/developing.md

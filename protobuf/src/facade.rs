@@ -17,7 +17,19 @@ impl LogGroupList {
 
 impl LogGroup {
     pub fn encode(&self) -> Result<Vec<u8>> {
-        LogGroupImpl::from(self).to_bytes()
+        let mut output = Vec::new();
+        self.encode_into(&mut output)?;
+        Ok(output)
+    }
+    /// Encode into a reusable buffer, replacing its contents and retaining capacity.
+    ///
+    /// The bytes match [`Self::encode`]. If encoding fails, the buffer may contain
+    /// partial output; subsequent calls replace it rather than append to it.
+    pub fn encode_into(&self, output: &mut Vec<u8>) -> Result<()> {
+        use quick_protobuf::{MessageWrite, Writer};
+        output.clear();
+        self.write_message(&mut Writer::new(output))
+            .map_err(|e| crate::Error::Encode(crate::error::EncodeError::from(e)))
     }
 }
 

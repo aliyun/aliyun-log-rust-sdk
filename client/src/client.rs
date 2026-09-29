@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use crate::config::Config;
-use crate::utils::{user_agent, ValueGetter};
+use crate::utils::ValueGetter;
 use crate::{
     common::*, CompressionError, ConfigError, RequestError, RequestErrorKind, ResponseErrorKind,
     ResponseResult,
@@ -211,12 +211,7 @@ impl Handle {
         mut headers: http::HeaderMap,
     ) -> Result<DecompressedResponse> {
         if !headers.contains_key(USER_AGENT) {
-            headers.insert(
-                USER_AGENT,
-                user_agent()
-                    .parse()
-                    .expect("fail to insert UserAgent into headers"),
-            );
+            headers.insert(USER_AGENT, self.config.user_agent.clone());
         }
 
         // prepare http request parameters
@@ -225,8 +220,7 @@ impl Handle {
         let query_params: aliyun_log_sdk_sign::QueryParams<'_> =
             query_params.unwrap_or_default().into();
 
-        let max_retry = self.config.max_retry + 1;
-        for i in 0..max_retry {
+        for i in 0..=self.config.max_retry {
             // Acquire one complete snapshot and sign immediately before each HTTP attempt.
             let credentials = self.config.credentials.get().await?;
             let mut signed_headers = headers.clone();
@@ -254,8 +248,8 @@ impl Handle {
                     return Ok(resp);
                 }
                 Err(err) => {
-                    debug!("fail to send on {} err: {:?}", i, &err.to_string());
-                    if !self.should_retry(&err) || i + 1 >= max_retry {
+                    debug!("fail to send on {} err: {:?}", i, err.to_string());
+                    if !self.should_retry(&err) || i >= self.config.max_retry {
                         return Err(err);
                     }
                 }
@@ -415,7 +409,8 @@ impl Handle {
 }
 
 fn exponential_backoff(base_delay: Duration, retry_count: u32, max_delay: Duration) -> Duration {
-    let exp_delay = base_delay * 2u32.pow(retry_count);
+    let multiplier = 1u32.checked_shl(retry_count).unwrap_or(u32::MAX);
+    let exp_delay = base_delay.checked_mul(multiplier).unwrap_or(max_delay);
     std::cmp::min(exp_delay, max_delay)
 }
 

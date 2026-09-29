@@ -4,7 +4,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use arc_swap::ArcSwapOption;
+use arc_swap::{ArcSwap, ArcSwapOption};
 use async_trait::async_trait;
 use tokio::time::{sleep, timeout, Instant};
 
@@ -22,8 +22,8 @@ pub use environment::{
 ///
 /// Custom [`CredentialsProvider`] implementations return this type. AccessKey ID
 /// and secret are required. The STS token, expiration, and update time are optional.
-/// Missing expiration means nonexpiring credentials; `update_time` is metadata only.
-/// Supply the actual expiration from your source for temporary credentials.
+/// With a provider, missing expiration disables automatic refresh; `update_time`
+/// is metadata only. Supply the actual expiration for temporary provider credentials.
 ///
 /// To configure fixed credentials directly, use [`static_credentials_provider`].
 /// For ECS role credentials, use [`ecs_ram_role_credentials_provider`].
@@ -154,6 +154,60 @@ impl fmt::Debug for Credentials {
     }
 }
 
+/// Internal integration support for application-managed credentials.
+///
+/// Unstable and subject to change. Not intended for downstream application use.
+/// An initial snapshot is required; clones share atomic updates. The owner manages
+/// renewal and expiration. Each HTTP attempt reads the current snapshot directly.
+#[doc(hidden)]
+#[derive(Clone)]
+pub struct ExternalManagedCredentials {
+    current: Arc<ArcSwap<Credentials>>,
+}
+
+impl ExternalManagedCredentials {
+    /// Create nonempty shared storage from an initial snapshot.
+    pub fn new(initial: Credentials) -> Self {
+        Self {
+            current: Arc::new(ArcSwap::from_pointee(initial)),
+        }
+    }
+
+    /// Read one consistent snapshot, cloning its pointer rather than its strings.
+    pub fn get(&self) -> Arc<Credentials> {
+        self.current.load_full()
+    }
+
+    /// Publish a new snapshot. Previously acquired snapshots remain valid.
+    ///
+    /// The handle owns only credentials storage, not a client. It remains usable
+    /// after clients are dropped. This does not validate expiration or contact SLS.
+    pub fn set(&self, credentials: Credentials) {
+        self.current.store(Arc::new(credentials));
+    }
+}
+
+impl fmt::Debug for ExternalManagedCredentials {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ExternalManagedCredentials")
+            .finish_non_exhaustive()
+    }
+}
+
+pub(crate) enum CredentialsSource {
+    Cached(CredentialsCache),
+    External(ExternalManagedCredentials),
+}
+
+impl CredentialsSource {
+    pub(crate) async fn get(&self) -> Result<Arc<Credentials>, CredentialsError> {
+        match self {
+            Self::Cached(cache) => cache.get().await,
+            Self::External(credentials) => Ok(credentials.get()),
+        }
+    }
+}
+
 /// An error obtaining credentials. Provider error sources are shared when cloned.
 ///
 /// Helper functions can return this error during construction. During client
@@ -215,84 +269,18 @@ impl From<anyhow::Error> for CredentialsError {
     }
 }
 
-/// Fetch credentials asynchronously from a built-in or application-defined source.
+/// Fetch credentials from an application-defined source.
 ///
-/// Prefer [`ecs_ram_role_credentials_provider`] for ECS,
-/// [`environment_credentials_provider`] for environment variables, or
-/// [`static_credentials_provider`] for fixed credentials. Implement this trait when
-/// your application obtains credentials from another source, and expose a helper
-/// function to create your provider. The SDK re-exports [`crate::async_trait`], so
-/// a separate macro dependency is not required.
+/// Prefer the built-in ECS, environment, or static providers when applicable.
+/// The client caches credentials, refreshes them before expiration, and retries
+/// failed fetches. Return the actual expiration for temporary credentials;
+/// credentials without an expiration are not automatically refreshed.
 ///
-/// # Implementation Requirements
-///
-/// * Return an AccessKey pair with its optional STS token and actual expiration.
-///   Missing expiration means the SDK need not refresh the credentials.
-/// * Return source failures as [`CredentialsError`]; the SDK manages fetch retries.
-/// * Support concurrent calls and cancellation-safe async I/O. A timeout or request
-///   cancellation can drop the fetch future. Do not block the async executor.
-/// * The provider must be `Send + Sync + 'static`, but need not implement `Clone`.
-///   `Arc<YourProvider>` and [`SharedCredentialsProvider`] provide shared handles.
-///
-/// # Examples
-///
-/// This example obtains temporary credentials from an application-managed HTTPS
-/// service. Adapt the response fields and authentication to your service; the
-/// expiration is an RFC 3339 string. For environment variables, use the built-in
-/// [`environment_credentials_provider`] instead.
-///
-/// ```
-/// use aliyun_log_rust_sdk::{
-///     async_trait, Config, Credentials, CredentialsError, CredentialsProvider,
-/// };
-/// use serde::Deserialize;
-///
-/// struct HttpCredentialsProvider {
-///     endpoint: String,
-///     client: reqwest::Client,
-/// }
-///
-/// // JSON returned by your application's credentials service.
-/// #[derive(Deserialize)]
-/// struct SourceCredentials {
-///     access_key_id: String,
-///     access_key_secret: String,
-///     security_token: Option<String>,
-///     expiration: String,
-/// }
-///
-/// #[async_trait]
-/// impl CredentialsProvider for HttpCredentialsProvider {
-///     async fn fetch_credentials(&self) -> Result<Credentials, CredentialsError> {
-///         let body = self.client.get(&self.endpoint).send().await
-///             .map_err(CredentialsError::provider)?
-///             .error_for_status().map_err(CredentialsError::provider)?
-///             .bytes().await.map_err(CredentialsError::provider)?;
-///         let source: SourceCredentials = serde_json::from_slice(&body)
-///             .map_err(CredentialsError::provider)?;
-///         let expiration = chrono::DateTime::parse_from_rfc3339(&source.expiration)
-///             .map_err(CredentialsError::provider)?;
-///         let mut credentials = Credentials::new(source.access_key_id, source.access_key_secret)?
-///             .with_expiration(expiration.into());
-///         if let Some(token) = source.security_token {
-///             credentials = credentials.with_security_token(token);
-///         }
-///         Ok(credentials)
-///     }
-/// }
-///
-/// fn http_credentials_provider(endpoint: impl Into<String>) -> impl CredentialsProvider {
-///     HttpCredentialsProvider { endpoint: endpoint.into(), client: reqwest::Client::new() }
-/// }
-///
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let config = Config::builder()
-///         .endpoint("cn-hangzhou.log.aliyuncs.com")
-///         .credentials_provider(http_credentials_provider("https://credentials.example.com/current"))
-///         .build()?;
-///     Ok(())
-/// }
-/// ```
+/// Implement this trait with [`crate::async_trait`]. Providers must support
+/// concurrent calls and nonblocking, cancellation-safe async I/O: a timeout or
+/// request cancellation may drop the fetch future. Return source failures as
+/// [`CredentialsError`]. Use [`SharedCredentialsProvider`] when a cloneable
+/// handle is needed; the provider itself need not implement `Clone`.
 #[async_trait]
 pub trait CredentialsProvider: Send + Sync + 'static {
     /// Obtain one set of credentials from the source.
@@ -472,6 +460,7 @@ impl CredentialsProvider for SharedCredentialsProvider {
 pub(crate) const DEFAULT_FETCH_TIMEOUT: Duration = Duration::from_secs(5);
 const FAILURE_COOLDOWN: Duration = Duration::from_secs(15);
 const MAX_FETCH_ATTEMPTS: u32 = 3;
+const MAX_REFRESH_JITTER: Duration = Duration::from_secs(5);
 
 struct CachedCredentials {
     credentials: Arc<Credentials>,
@@ -503,8 +492,22 @@ impl CachedCredentials {
     }
 
     fn needs_refresh(&self) -> bool {
-        self.refresh_after
-            .is_some_and(|delay| self.fetched_at.elapsed() >= delay)
+        let Some(delay) = self.refresh_after else {
+            return false;
+        };
+        let elapsed = self.fetched_at.elapsed();
+        if elapsed >= delay {
+            return true;
+        }
+        // Each caller samples independently near the refresh boundary. Only
+        // advance refresh, never postpone it beyond the original deadline.
+        // For short-lived credentials keep at least half the cache interval.
+        let window = MAX_REFRESH_JITTER.min(delay / 2);
+        if elapsed < delay.saturating_sub(window) {
+            return false;
+        }
+        let jitter = Duration::from_nanos(fastrand::u64(0..=window.as_nanos() as u64));
+        elapsed >= delay.saturating_sub(jitter)
     }
 }
 

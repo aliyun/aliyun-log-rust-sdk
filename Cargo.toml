@@ -1,5 +1,6 @@
 [workspace]
 
-members = ["client", "sign", "protobuf"]
+members = ["client", "sign", "protobuf", "producer", "bindings/python"]
+default-members = ["client", "sign", "protobuf", "producer"]
 
 resolver = "2"

@@ -193,3 +193,102 @@ async fn missing_credentials_return_typed_errors_without_sending_http() {
             .is_err()
     );
 }
+
+#[tokio::test]
+async fn external_updates_are_used_to_sign_http_retries_without_expiration() {
+    use crate::ExternalManagedCredentials;
+    let credentials = ExternalManagedCredentials::new(
+        Credentials::new("id-0", "secret-0")
+            .unwrap()
+            .with_security_token("token-0"),
+    );
+    let updater = credentials.clone();
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let mut requests = Vec::new();
+        for attempt in 0..3 {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            requests.push(read_request(&mut stream).await);
+            // Publish before allowing the client to retry, with no timing-based synchronization.
+            if attempt < 2 {
+                let next = attempt + 1;
+                let value =
+                    Credentials::new(format!("id-{next}"), format!("secret-{next}")).unwrap();
+                updater.set(if next == 1 {
+                    value.with_security_token("token-1")
+                } else {
+                    value
+                });
+            }
+            let (status, body) = if attempt < 2 {
+                (
+                    "503 Service Unavailable",
+                    r#"{"errorCode":"ServerBusy","errorMessage":"retry"}"#,
+                )
+            } else {
+                ("200 OK", "done")
+            };
+            stream.write_all(format!(
+                "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()
+            ).as_bytes()).await.unwrap();
+        }
+        requests
+    });
+    let mut config = Config::builder()
+        .endpoint(format!("http://{address}"))
+        .external_managed_credentials(credentials)
+        .build()
+        .unwrap();
+    config.base_retry_backoff = Duration::from_millis(1);
+    let handle = Handle {
+        config,
+        http_client: reqwest::Client::builder()
+            .no_proxy()
+            .timeout(Duration::from_secs(5))
+            .build()
+            .unwrap(),
+    };
+    let body = bytes::Bytes::from_static(b"hello");
+    let response = tokio::time::timeout(
+        Duration::from_secs(10),
+        handle.send_http(
+            http::Method::POST,
+            format!("http://{address}"),
+            "/logs",
+            None,
+            Some(body.clone()),
+            HeaderMap::new(),
+        ),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert_eq!(response.decompressed, b"done");
+    for (attempt, (_, headers, sent_body)) in server.await.unwrap().iter().enumerate() {
+        assert_eq!(sent_body.as_slice(), body.as_ref());
+        if attempt < 2 {
+            assert_eq!(headers["x-acs-security-token"], format!("token-{attempt}"));
+        } else {
+            assert!(!headers.contains_key("x-acs-security-token"));
+        }
+        // Recompute the signature to verify that the secret and token rotate with the ID.
+        let mut expected = headers.clone();
+        expected.remove(http::header::AUTHORIZATION);
+        sign_v1(
+            &format!("id-{attempt}"),
+            &format!("secret-{attempt}"),
+            (attempt < 2).then(|| format!("token-{attempt}")).as_deref(),
+            http::Method::POST,
+            "/logs",
+            &mut expected,
+            Vec::<(String, String)>::new().into(),
+            Some(&body),
+        )
+        .unwrap();
+        assert_eq!(
+            headers[http::header::AUTHORIZATION],
+            expected[http::header::AUTHORIZATION]
+        );
+    }
+}

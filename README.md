@@ -68,6 +68,9 @@ let resp = client.get_logs("my-project", "my-logstore")
 
 ## Credentials
 
+For asynchronous buffered writes, batching, retries and callbacks, see the
+[producer crate](producer/README.md).
+
 Use ECS RAM Role, environment variables, static credentials, or a custom credentials
 source. See the [dynamic credentials guide](client/docs/credentials.md)
 for available providers, prerequisites, and examples.
