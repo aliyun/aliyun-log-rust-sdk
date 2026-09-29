@@ -6,8 +6,6 @@ The build matrix covers CPython 3.9–3.14, 3.14t, PyPy 3.11 and GraalPy Python 
 
 Windows ARM64 native wheels start at CPython 3.11; musl i686 has ABI3 only. Subinterpreters are not supported.
 
-GraalPy does not invoke Python `__del__` on collected objects in the tested 25.x runtimes. The producer uses weakref finalization there, but applications must still use `with` or `close()` to guarantee delivery. Callback/provider reference-release and explicit shutdown tests run on all supported runtimes. On GraalPy, process exit waits for any currently executing delivery callback or credentials refresh to return so that its thread can leave native code safely; callback and provider I/O must have finite timeouts.
-
 Linux GraalPy builds use the standard manylinux image interpreters: Python 3.12
 with ABI `graalpy250_312_native` on manylinux2014, and Python 3.13 with ABI
 `graalpy253_313_native` on manylinux_2_28.

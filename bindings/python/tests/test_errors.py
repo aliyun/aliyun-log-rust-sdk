@@ -125,4 +125,4 @@ def test_poll_thread_start_failure_cleans_up_and_preserves_control_exceptions(mo
     native = native_producers[0]
     native._wait_closed()
     assert native._is_closed()
-    assert all(item[0] is not native for item in module._graalpy_threads.values())
+    assert all(item[0] is not native for item in module._poll_threads.values())
