@@ -1,6 +1,6 @@
 [package]
 name = "aliyun-log-producer"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Aliyun Log Service"]
 description = "Thread-safe asynchronous batching producer for Alibaba Cloud Simple Log Service"

@@ -191,15 +191,86 @@ fn delivery_error_display_contains_actionable_context() {
 }
 
 #[test]
-fn zero_is_not_allowed_for_delivery_and_retry_delays() {
-    for invalid in [
-        config().with_delivery_timeout(Duration::ZERO),
-        config().with_base_backoff(Duration::ZERO),
-        config().with_max_backoff(Duration::ZERO),
+fn duration_config_bounds_are_inclusive() {
+    let setters = [
+        (
+            "linger",
+            ProducerConfig::with_linger as fn(ProducerConfig, Duration) -> ProducerConfig,
+            Duration::from_millis(10),
+            Duration::from_secs(365 * 24 * 3600),
+        ),
+        (
+            "base_backoff",
+            ProducerConfig::with_base_backoff,
+            Duration::from_millis(100),
+            Duration::from_secs(60),
+        ),
+        (
+            "max_backoff",
+            ProducerConfig::with_max_backoff,
+            Duration::from_millis(100),
+            Duration::from_secs(600),
+        ),
+        (
+            "delivery_timeout",
+            ProducerConfig::with_delivery_timeout,
+            Duration::from_secs(60),
+            Duration::from_secs(7 * 24 * 3600),
+        ),
+    ];
+    for (name, setter, min, max) in setters {
+        let config = config()
+            .with_base_backoff(Duration::from_millis(100))
+            .with_max_backoff(Duration::from_secs(600));
+        for value in [
+            Duration::ZERO,
+            min - Duration::from_nanos(1),
+            max + Duration::from_nanos(1),
+        ] {
+            assert!(
+                matches!(Producer::create(setter(config.clone(), value)),
+                    Err(ProducerError::Config(message)) if message.contains(name)),
+                "{name} accepted {value:?}"
+            );
+        }
+        for value in [min, max] {
+            let producer = Producer::create(setter(config.clone(), value)).unwrap();
+            producer.close_blocking().unwrap();
+        }
+    }
+}
+
+#[test]
+fn count_config_bounds_and_backoff_order_are_validated() {
+    for (name, invalid) in [
+        ("max_attempts", config().with_max_attempts(0)),
+        ("processing_workers", config().with_processing_workers(0)),
+        ("callback_capacity", config().with_callback_capacity(0)),
+        ("callback_capacity", config().with_callback_capacity(1023)),
+        (
+            "callback_capacity",
+            config().with_callback_capacity(1024 * 1024 + 1),
+        ),
+        (
+            "base_backoff",
+            config()
+                .with_base_backoff(Duration::from_millis(101))
+                .with_max_backoff(Duration::from_millis(100)),
+        ),
     ] {
-        assert!(matches!(
-            Producer::create(invalid),
-            Err(ProducerError::Config(_))
-        ));
+        assert!(matches!(Producer::create(invalid),
+            Err(ProducerError::Config(message)) if message.contains(name)));
+    }
+    for capacity in [1024, 1024 * 1024] {
+        let producer = Producer::create(
+            config()
+                .with_max_attempts(1)
+                .with_processing_workers(1)
+                .with_callback_capacity(capacity)
+                .with_base_backoff(Duration::from_millis(100))
+                .with_max_backoff(Duration::from_millis(100)),
+        )
+        .unwrap();
+        producer.close_blocking().unwrap();
     }
 }

@@ -81,7 +81,7 @@ fn start_with_inflight_limit(
     targets: Vec<Arc<dyn runtime::Transport>>,
     limit: Option<usize>,
 ) -> (Producer, Vec<LogstoreWriter>) {
-    config.validate().unwrap();
+    // Runtime fixtures use short deadlines and small queues; public bounds are tested separately.
     let owner = NEXT_OWNER.fetch_add(1, Ordering::Relaxed);
     let names: Vec<_> = (0..targets.len())
         .map(|index| format!("store-{index}"))
@@ -1031,13 +1031,16 @@ async fn empty_log_contents_remain_accepted() {
 }
 
 #[tokio::test]
-async fn zero_linger_sends_without_a_flush_or_full_batch() {
+async fn minimum_linger_sends_without_a_flush_or_full_batch() {
     let (sent, requests) = flume::bounded(2);
     let transport = mock(move |data, size| {
         sent.send(decode(&data, size).values.len()).unwrap();
         async { Ok(()) }
     });
-    let (producer, writers) = start(config().with_linger(Duration::ZERO), vec![transport]);
+    let (producer, writers) = start(
+        config().with_linger(Duration::from_millis(10)),
+        vec![transport],
+    );
     writers[0].send(entry("one")).unwrap();
     assert_eq!(
         tokio::time::timeout(Duration::from_secs(5), requests.recv_async())
@@ -1354,9 +1357,15 @@ async fn last_user_handle_drop_drains_background_without_arc_cycle() {
 
 #[test]
 fn config_is_validated_before_startup() {
-    assert!(config().with_processing_workers(0).validate().is_err());
-    assert!(config().with_max_attempts(0).validate().is_err());
-    assert!(config()
+    let config = ProducerConfig::default();
+    assert!(config.validate().is_ok());
+    assert!(config
+        .clone()
+        .with_processing_workers(0)
+        .validate()
+        .is_err());
+    assert!(config.clone().with_max_attempts(0).validate().is_err());
+    assert!(config
         .with_batch_size_threshold(10 * 1024 * 1024)
         .validate()
         .is_err());
@@ -1545,7 +1554,7 @@ async fn check_http_compression(
         requests
     });
     // Client prefixes project to endpoint: project 127 + endpoint 0.0.1 => loopback.
-    let producer_config = config()
+    let producer_config = ProducerConfig::default()
         .with_endpoint(format!("http://0.0.1:{port}"))
         .with_access_key("test-id", "test-secret")
         .with_compression(compression)

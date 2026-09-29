@@ -85,7 +85,7 @@ impl Default for ProducerConfig {
 
 impl ProducerConfig {
     /// Maximum accepted callbacks awaiting execution, including pending delivery.
-    /// Defaults to 65536. Plain send does not consume this capacity.
+    /// Defaults to 65536; must be in [1024, 1048576]. Plain send does not consume this capacity.
     pub fn with_callback_capacity(mut self, capacity: usize) -> Self {
         self.callback_capacity = capacity;
         self
@@ -222,8 +222,7 @@ impl ProducerConfig {
         self.batch_count_threshold
     }
 
-    /// Batch accumulation delay from the oldest admission. Defaults to 2000 ms.
-    /// Zero sends each submission without waiting to accumulate more logs.
+    /// Batch accumulation delay from the oldest admission. Defaults to 2000 ms; range: 10 ms–365 days.
     pub fn with_linger(mut self, value: Duration) -> Self {
         self.linger = value;
         self
@@ -245,7 +244,7 @@ impl ProducerConfig {
         self.buffer_bytes
     }
 
-    /// Number of threads used to prepare logs for delivery. Defaults to 2.
+    /// Number of threads used to prepare logs for delivery. Defaults to 2; must be at least 1.
     pub fn with_processing_workers(mut self, value: usize) -> Self {
         self.processing_workers = value;
         self
@@ -256,7 +255,7 @@ impl ProducerConfig {
         self.processing_workers
     }
 
-    /// Maximum delivery attempts, including the initial request. Defaults to 10; use 1 to disable retries.
+    /// Maximum delivery attempts, including the initial request. Defaults to 10; minimum 1 disables retries.
     pub fn with_max_attempts(mut self, value: u32) -> Self {
         self.max_attempts = value;
         self
@@ -267,7 +266,7 @@ impl ProducerConfig {
         self.max_attempts
     }
 
-    /// Initial exponential retry backoff with full jitter. Defaults to 200 ms.
+    /// Initial exponential retry backoff cap with full jitter. Defaults to 200 ms; range: 100 ms–60 s, not exceeding max_backoff.
     pub fn with_base_backoff(mut self, value: Duration) -> Self {
         self.base_backoff = value;
         self
@@ -278,7 +277,7 @@ impl ProducerConfig {
         self.base_backoff
     }
 
-    /// Maximum retry backoff before full jitter. Defaults to 10 seconds.
+    /// Maximum retry backoff before full jitter. Defaults to 10 seconds; range: 100 ms–600 s.
     pub fn with_max_backoff(mut self, value: Duration) -> Self {
         self.max_backoff = value;
         self
@@ -289,7 +288,7 @@ impl ProducerConfig {
         self.max_backoff
     }
 
-    /// Soft delivery budget measured from batch sealing. Defaults to 600 seconds.
+    /// Soft delivery budget measured from batch sealing. Defaults to 600 seconds; range: 60 s–7 days.
     /// Includes queueing, processing, requests and retry delays, but excludes
     /// accumulation (linger) and callbacks. Checked before processing or sending;
     /// an in-flight request uses the client's own timeout and may finish later.
@@ -327,20 +326,40 @@ impl ProducerConfig {
                 "batch_count_threshold must be <= 40960".into(),
             ));
         }
-        for (name, value, allow_zero) in [
-            ("linger", self.linger, true),
-            ("delivery_timeout", self.delivery_timeout, false),
-            ("base_backoff", self.base_backoff, false),
-            ("max_backoff", self.max_backoff, false),
+        if !(1024..=1024 * 1024).contains(&self.callback_capacity) {
+            return Err(ProducerError::Config(
+                "callback_capacity must be in [1024, 1048576]".into(),
+            ));
+        }
+        for (name, value, min, max) in [
+            (
+                "linger",
+                self.linger,
+                Duration::from_millis(10),
+                Duration::from_secs(365 * 24 * 3600),
+            ),
+            (
+                "delivery_timeout",
+                self.delivery_timeout,
+                Duration::from_secs(60),
+                Duration::from_secs(7 * 24 * 3600),
+            ),
+            (
+                "base_backoff",
+                self.base_backoff,
+                Duration::from_millis(100),
+                Duration::from_secs(60),
+            ),
+            (
+                "max_backoff",
+                self.max_backoff,
+                Duration::from_millis(100),
+                Duration::from_secs(600),
+            ),
         ] {
-            if (!allow_zero && value.is_zero()) || value > Duration::from_secs(365 * 24 * 3600) {
+            if !(min..=max).contains(&value) {
                 return Err(ProducerError::Config(format!(
-                    "{name} must be in {}",
-                    if allow_zero {
-                        "[0, 365 days]"
-                    } else {
-                        "(0, 365 days]"
-                    }
+                    "{name} must be in [{min:?}, {max:?}]"
                 )));
             }
         }

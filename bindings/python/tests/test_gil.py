@@ -19,7 +19,7 @@ faulthandler.dump_traceback_later(10, exit=True)
 endpoint = {service.endpoint!r}
 def config(**kwargs):
     return ProducerConfig(endpoint=endpoint,
-        linger=0, max_attempts=1, **kwargs)
+        linger=0.01, max_attempts=1, **kwargs)
 """
     result = subprocess.run(
         [sys.executable, "-c", textwrap.dedent(prelude) + textwrap.dedent(script)],

@@ -17,7 +17,7 @@ def snapshot(identifier="dynamic-id", **kwargs):
 
 def config(service, provider, **kwargs):
     return ProducerConfig(endpoint=service.endpoint, credentials_provider=provider,
-                          max_attempts=1, linger=0, batch_count_threshold=1, **kwargs)
+                          max_attempts=1, linger=0.01, batch_count_threshold=1, **kwargs)
 
 
 def test_credentials_snapshot_fields_and_redacted_repr():
