@@ -25,8 +25,8 @@ fn start_with_writers(destinations: &[(&str, &str)]) -> Producer {
         .with_linger(Duration::from_secs(60))
         .with_delivery_timeout(Duration::from_secs(120))
         .with_max_attempts(2)
-        .with_base_backoff(Duration::from_millis(1))
-        .with_max_backoff(Duration::from_millis(2));
+        .with_base_backoff(Duration::from_millis(100))
+        .with_max_backoff(Duration::from_millis(200));
     let producer = Producer::create(config).unwrap();
     for &(project, logstore) in destinations {
         producer.writer(project, logstore).unwrap();

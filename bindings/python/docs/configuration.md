@@ -73,14 +73,16 @@ Unsupported calls have no guaranteed outcome or specific exception.
 | `endpoint` | `str` | Required | SLS endpoint, for example `cn-hangzhou.log.aliyuncs.com`. |
 | `user_agent` | `str` | `aliyun-log-python-producer/<version>` | Custom User-Agent sent with HTTP requests to identify your application. |
 | `compression` | `str` | `"zstd"` | Log compression format: `"zstd"` or `"lz4"`. |
-| `generate_pack_id` | `bool` | `True` | Add PackId for log context queries. Does not deduplicate logs. |
-| `batch_size_threshold` | `int` | 1 MiB (`1048576`) | Send a batch when its estimated log size reaches this value. Range: 1–8388608 bytes (8 MiB). |
-| `batch_count_threshold` | `int` | `4096` | Send a batch when its log count reaches this value. Range: 1–40960. |
-| `linger` | `float` | `2.0` s | Maximum time to wait for more logs before sending. Zero disables the wait. In seconds; range: 0–31536000 (365 days). |
-| `buffer_bytes` | `int` | 128 MiB (`134217728`) | Buffer budget for pending logs. When full, new logs are rejected and your application can retry later. This is not a process memory limit. |
-| `processing_workers` | `int` | `2` | Number of worker threads processing logs. |
-| `callback_capacity` | `int` | `65536` | Maximum logs waiting for callbacks to finish. When full, new sends with callbacks are rejected. |
-| `max_attempts` | `int` | `10` | Maximum sends per batch, including the first attempt. Set to 1 to disable retries. |
-| `base_backoff` | `float` | `0.2` s | Initial wait before retrying. Must not exceed `max_backoff`. In seconds; must be greater than 0 and at most 31536000 (365 days). |
-| `max_backoff` | `float` | `10.0` s | Maximum wait between retries. In seconds; must be greater than 0 and at most 31536000 (365 days). |
-| `delivery_timeout` | `float` | `600.0` s | Soft delivery budget from batch sealing, including queueing, processing, requests, and retries. Excludes accumulation (`linger`) and callbacks. Checked before processing or sending; in-flight requests use their own timeout and may finish later. In seconds; must be greater than 0 and at most 31536000 (365 days). |
+| `generate_pack_id` | `bool` | `True` | Automatically add PackId to enable context queries after logs are written to the Logstore. Does not deduplicate logs. |
+| `batch_size_threshold` | `int` | 1 MiB (`1048576`) | Accumulate logs across multiple `send` calls and send a batch when its estimated log size reaches this value. Range: 1–8388608 bytes (8 MiB); not a single-log size limit. |
+| `batch_count_threshold` | `int` | `4096` | Accumulate logs across multiple `send` calls and send a batch when its log count reaches this value. Range: 1–40960. |
+| `linger` | `float` | `2.0` s | Maximum time logs are cached for accumulation; when elapsed, the batch immediately enters the sending flow. In seconds; range: 0.01–31536000 (365 days). |
+| `buffer_bytes` | `int` | 128 MiB (`134217728`) | Estimated raw-data budget for pending logs. When full, new logs are rejected and your application can retry later. This is not a process memory limit. |
+| `processing_workers` | `int` | `2` | Number of worker threads processing logs. Must be at least 1. |
+| `callback_capacity` | `int` | `65536` | Maximum number of logs whose callbacks have not yet completed. Sends without callbacks do not consume this capacity. When full, new sends with callbacks are rejected. Range: 1024–1048576 (`1024 * 1024`). |
+| `max_attempts` | `int` | `10` | Maximum sends per batch, including the first attempt. Must be at least 1; set to 1 to disable retries. |
+| `base_backoff` | `float` | `0.2` s | Initial upper bound on the retry wait. In seconds; range: 0.1–60; must not exceed `max_backoff`. |
+| `max_backoff` | `float` | `10.0` s | Maximum upper bound on the retry wait. In seconds; range: 0.1–600. |
+| `delivery_timeout` | `float` | `600.0` s | Soft delivery budget from when the batch stops accumulating (batch sealing), including queueing, processing, requests, and retries. Excludes accumulation (`linger`) and callbacks. Checked before processing or sending; in-flight requests use their own timeout and may finish later. In seconds; range: 60–604800 (7 days). |
+
+All ranges are inclusive. A batch enters the sending flow when any of its size, count, or wait-time thresholds is reached.

@@ -203,11 +203,12 @@ def test_structured_delivery_failure(make_producer, service):
         error.kind = "changed"
 
 
+@pytest.mark.timeout(90)
 def test_delivery_timeout_is_callback_data(make_producer, service):
     service.status = 503
     service.body = b'{"errorCode":"InternalServerError","errorMessage":"retry later"}'
-    producer, writer = make_producer(delivery_timeout=0.05, max_attempts=100,
-                                     base_backoff=0.1, max_backoff=0.1)
+    producer, writer = make_producer(delivery_timeout=60, max_attempts=100000,
+                                     base_backoff=1, max_backoff=1)
     results = []
     writer.send(Log([]), on_delivery=results.append)
     producer.close()
@@ -218,7 +219,7 @@ def test_delivery_timeout_is_callback_data(make_producer, service):
 def test_retries_notify_once(make_producer, service):
     service.status = 503
     service.body = b'{"errorCode":"InternalServerError","errorMessage":"retry later"}'
-    producer, writer = make_producer(max_attempts=2, base_backoff=0.001, max_backoff=0.001)
+    producer, writer = make_producer(max_attempts=2, base_backoff=0.1, max_backoff=0.1)
     results = []
     writer.send(Log([]), on_delivery=results.append)
     producer.close()
@@ -369,7 +370,7 @@ def test_concurrent_send_and_close(make_producer):
 
 def test_writer_outlives_python_producer(service):
     producer = Producer(ProducerConfig(endpoint=service.endpoint, access_key_id="test-id",
-                                       access_key_secret="test-secret", linger=0))
+                                       access_key_secret="test-secret", linger=0.01))
     writer = producer.writer("127", "store")
     del producer
     gc.collect()
@@ -378,14 +379,54 @@ def test_writer_outlives_python_producer(service):
     assert done.wait(5)
 
 
-@pytest.mark.parametrize("option,value", [("callback_capacity", 0), ("max_attempts", 0),
-    ("batch_size_threshold", 9 * 1024 * 1024), ("delivery_timeout", 0), ("linger", float("nan")),
-    ("user_agent", "bad\r\nheader"), ("compression", "gzip"), ("endpoint", ""), ("access_key_id", "")])
-def test_invalid_config(option, value):
+@pytest.mark.parametrize("overrides", [
+    {"callback_capacity": 0},
+    {"callback_capacity": 1023},
+    {"callback_capacity": 1048577},
+    {"processing_workers": 0},
+    {"max_attempts": 0},
+    {"linger": 0},
+    {"linger": 0.009},
+    {"linger": float("nan")},
+    {"base_backoff": 0.099},
+    {"base_backoff": 60.001, "max_backoff": 600},
+    {"base_backoff": 1, "max_backoff": 0.1},
+    {"base_backoff": 0.1, "max_backoff": 0.099},
+    {"max_backoff": 600.001},
+    {"delivery_timeout": 0},
+    {"delivery_timeout": 59.999},
+    {"delivery_timeout": 604800.001},
+    {"batch_size_threshold": 9 * 1024 * 1024},
+    {"user_agent": "bad\r\nheader"},
+    {"compression": "gzip"},
+    {"endpoint": ""},
+    {"access_key_id": ""},
+])
+def test_invalid_config(overrides):
     options = dict(endpoint="cn-hangzhou.log.aliyuncs.com", access_key_id="test-id", access_key_secret="test-secret")
-    options[option] = value
+    options.update(overrides)
     with pytest.raises(ConfigError):
         Producer(ProducerConfig(**options))
+
+
+@pytest.mark.parametrize("overrides", [
+    {"linger": 0.01},
+    {"base_backoff": 0.1, "max_backoff": 0.1},
+    {"base_backoff": 60, "max_backoff": 60},
+    {"max_backoff": 600},
+    {"delivery_timeout": 60},
+    {"delivery_timeout": 604800},
+    {"callback_capacity": 1024},
+    {"callback_capacity": 1048576},
+    {"processing_workers": 1},
+    {"max_attempts": 1},
+])
+def test_valid_config_boundaries(make_producer, overrides):
+    producer, writer = make_producer(**overrides)
+    results = []
+    writer.send(Log([]), on_delivery=results.append)
+    producer.close()
+    assert results == [None]
 
 
 def test_config_repr_redacts_credentials():
@@ -401,7 +442,7 @@ def test_interpreter_shutdown(service, explicit_close, attempt):
 import time
 from aliyun_log_producer import Producer, ProducerConfig, Log
 p = Producer(ProducerConfig(endpoint={service.endpoint!r}, access_key_id="test-id",
-    access_key_secret="test-secret", linger=0, batch_count_threshold=1, ))
+    access_key_secret="test-secret", linger=0.01, batch_count_threshold=1, ))
 w = p.writer("127", "store")
 def callback(error):
     time.sleep(0.001)
@@ -491,7 +532,7 @@ def test_producer_errors_share_a_catchable_base(error_type):
 def test_collected_producer_stops_its_poll_thread(service):
     def create():
         producer = Producer(ProducerConfig(endpoint=service.endpoint, access_key_id="id",
-                                           access_key_secret="secret", linger=0))
+                                           access_key_secret="secret", linger=0.01))
         return weakref.ref(producer), producer._thread
     reference, thread = create()
     assert_collected(reference)

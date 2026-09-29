@@ -72,7 +72,7 @@ def make_producer(service):
             access_key_secret="test-secret",
             processing_workers=1,
             max_attempts=1,
-            linger=0,
+            linger=0.01,
         )
         options.update(overrides)
         producer = Producer(ProducerConfig(**options))

@@ -63,7 +63,7 @@ async fn dynamic_writers_share_http_connection_and_credentials_cache() {
             .with_endpoint(format!("http://0.0.1:{port}"))
             .with_credentials_provider(CountingCredentials(fetches.clone()))
             .with_max_attempts(1)
-            .with_delivery_timeout(Duration::from_secs(5)),
+            .with_delivery_timeout(Duration::from_secs(60)),
     )
     .unwrap();
     assert_eq!(
