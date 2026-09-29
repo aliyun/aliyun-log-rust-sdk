@@ -1,7 +1,7 @@
 {
-  "run_id": 36573230758,
+  "run_id": 36587863706,
   "run_attempt": 1,
-  "url": "https://github.com/aliyun/aliyun-log-rust-sdk/actions/runs/36573230758",
+  "url": "https://github.com/aliyun/aliyun-log-rust-sdk/actions/runs/36587863706",
   "commit": "450464536bc911f46a3ea5b61ede7c6d98cf060c",
   "platforms": {
     "manylinux2014-x86_64": {
