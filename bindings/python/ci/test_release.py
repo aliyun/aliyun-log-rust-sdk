@@ -140,6 +140,24 @@ class BuildGroupsTest(unittest.TestCase):
         baselines = Counter(entry["policy"] for entry in self.entries.values() if "policy" in entry)
         self.assertEqual(baselines, {"manylinux2014": 52, "manylinux_2_31": 8, "musllinux_1_1": 28, "manylinux_2_28": 2})
 
+    def test_linux_graalpy313_uses_explicit_abi_config(self):
+        configured = [group for group in self.groups if "pyo3_config" in group]
+        self.assertEqual({group["id"] for group in configured}, {
+            "manylinux_2_28-x86_64-graalpy-3.13", "manylinux_2_28-aarch64-graalpy-3.13",
+        })
+        root = Path(__file__).resolve().parents[3]
+        for group in configured:
+            config = dict(line.split("=", 1) for line in (root / group["pyo3_config"]).read_text().splitlines())
+            self.assertEqual(config, {
+                "implementation": "GraalVM", "version": "3.13", "shared": "true",
+                "abi3": "false", "pointer_width": "64", "abi_tag": "graalpy253_313_native",
+            })
+            self.assertEqual(group["interpreters"], "graalpy3.13")
+            self.assertEqual(len(group["artifact_ids"]), 1)
+            entry = self.entries[group["artifact_ids"][0]]
+            self.assertEqual(entry["tag"], "graalpy313-" + config["abi_tag"])
+            self.assertIn("--no-default-features", group["features"])
+
     def test_desktop_requests_keep_architecture_and_abi(self):
         for group in build_groups()[1]:
             if group["kind"] == "graalpy":
@@ -202,6 +220,24 @@ class GroupValidationTest(unittest.TestCase):
 
     def test_complete_group(self):
         check_group(self.directory, self.group, "0.1.0")
+
+    def test_linux_graalpy313_rejects_inferred_270_abi(self):
+        for wheel in self.wheels:
+            wheel.unlink()
+        entries = [entry for entry in build_matrices()[0]
+                   if entry["kind"] == "graalpy" and entry["python"] == "3.13"]
+        self.assertEqual(len(entries), 2)
+        for entry in entries:
+            group_id = entry["platform"] + "-graalpy-3.13"
+            with self.subTest(platform=entry["platform"]):
+                wheel = self.write_wheel(entry)
+                check_group(self.directory, group_id, "0.1.0")
+                wheel.unlink()
+                wrong_tag = "{}-{}".format(entry["tag"].replace("graalpy253", "graalpy270"), entry["wheel_platform"])
+                wheel = self.write_wheel(entry, tag=wrong_tag)
+                with self.assertRaisesRegex(ValueError, "unexpected ABI/platform/baseline"):
+                    check_group(self.directory, group_id, "0.1.0")
+                wheel.unlink()
 
     def test_final_distribution_still_requires_all_wheels_and_audits_abi3(self):
         for matrix in build_matrices():

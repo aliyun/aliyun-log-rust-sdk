@@ -1,0 +1,6 @@
+implementation=GraalVM
+version=3.13
+shared=true
+abi3=false
+pointer_width=64
+abi_tag=graalpy253_313_native
