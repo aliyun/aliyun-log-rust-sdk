@@ -94,6 +94,9 @@ jobs:
               apt-get update
               apt-get install -y --no-install-recommends perl make
             fi
+            if [ -n "${{ matrix.pyo3_config }}" ]; then
+              export PYO3_CONFIG_FILE="$PWD/${{ matrix.pyo3_config }}"
+            fi
           args: --release --manifest-path bindings/python/Cargo.toml --interpreter ${{ matrix.interpreters }} ${{ matrix.features }} --auditwheel repair --out dist
       - uses: actions/setup-python@v6
         with:

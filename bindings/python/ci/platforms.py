@@ -122,6 +122,9 @@ def build_groups():
                 groups[group_id].update(id=group_id, artifact_ids=[], interpreters=[], python_requests=[])
                 if entry["kind"] == "graalpy" and "runner" in entry:
                     groups[group_id]["setup_python"] = entry["setup_python"]
+                if entry["kind"] == "graalpy" and entry["python"] == "3.13" and "policy" in entry:
+                    # Maturin's bundled sysconfig infers ABI 270 for Python 3.13, not 253.
+                    groups[group_id]["pyo3_config"] = "bindings/python/ci/graalpy313-config.txt"
             group = groups[group_id]
             group["artifact_ids"].append(entry["id"])
             group["interpreters"].append(entry["interpreter"])
