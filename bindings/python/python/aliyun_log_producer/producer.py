@@ -25,15 +25,23 @@ def _arguments(error_type):
     return decorate
 
 
-# GraalPy terminates daemon threads at context shutdown. They must first leave
-# native calls: killing a thread inside PyEval_RestoreThread can crash GraalPy.
-_graalpy_threads = {}
-_graalpy_lock = threading.Lock()
+# Daemon poll threads must leave native calls and stop dispatching Python
+# callbacks before interpreter teardown: a thread re-entering a finalizing
+# interpreter aborts (CPython) or crashes when terminated inside
+# PyEval_RestoreThread (GraalPy). The hook below therefore joins every poll
+# thread while the interpreter is still intact. CPython 3.9+ runs
+# threading._register_atexit callbacks after non-daemon threads finish and
+# before daemon thread states are destroyed; other interpreters (GraalPy,
+# CPython 3.8) terminate daemon threads late enough that plain atexit works.
+# The hook is registered when the first producer is created, not at import.
+_poll_threads = {}
+_poll_threads_lock = threading.Lock()
+_exit_hook_registered = False
 
 
-def _stop_graalpy_threads():
-    with _graalpy_lock:
-        threads = list(_graalpy_threads.items())
+def _stop_poll_threads():
+    with _poll_threads_lock:
+        threads = list(_poll_threads.items())
     for thread, (native, stop, _) in threads:
         stop.set()
         native._begin_close()
@@ -42,8 +50,17 @@ def _stop_graalpy_threads():
             thread.join()
 
 
-if sys.implementation.name == "graalpy":
-    atexit.register(_stop_graalpy_threads)
+def _register_exit_hook():
+    global _exit_hook_registered
+    with _poll_threads_lock:
+        if _exit_hook_registered:
+            return
+        _exit_hook_registered = True
+        register = getattr(threading, "_register_atexit", None)
+        if register is not None:
+            register(_stop_poll_threads)
+        else:
+            atexit.register(_stop_poll_threads)
 
 
 def _poll(native, stop, credentials):
@@ -55,9 +72,8 @@ def _poll(native, stop, credentials):
             if not stop.is_set():
                 native._poll(0.1)
     finally:
-        if sys.implementation.name == "graalpy":
-            with _graalpy_lock:
-                _graalpy_threads.pop(threading.current_thread(), None)
+        with _poll_threads_lock:
+            _poll_threads.pop(threading.current_thread(), None)
 
 
 class Producer:
@@ -86,22 +102,23 @@ class Producer:
             config,
             external_credentials=self._credentials.credentials if self._credentials is not None else None,
         )
+        _register_exit_hook()
         stop = threading.Event()
         self._join_lock = threading.Lock()
         self._thread = threading.Thread(
             target=_poll, args=(self._native, stop, self._credentials),
             name="sls-producer-poll", daemon=True,
         )
+        with _poll_threads_lock:
+            _poll_threads[self._thread] = (self._native, stop, self._join_lock)
         if sys.implementation.name == "graalpy":
             # GraalPy does not invoke Python __del__, but supports weakrefs.
             weakref.finalize(self, self._native._begin_close)
-            with _graalpy_lock:
-                _graalpy_threads[self._thread] = (self._native, stop, self._join_lock)
         try:
             self._thread.start()
         except BaseException as error:
-            with _graalpy_lock:
-                _graalpy_threads.pop(self._thread, None)
+            with _poll_threads_lock:
+                _poll_threads.pop(self._thread, None)
             self._native._begin_close()
             if isinstance(error, Exception) and not isinstance(error, MemoryError):
                 raise ProducerError("failed to start producer poll thread: {}".format(error)) from error

@@ -222,6 +222,7 @@ jobs:
     needs: [prepare, pre-release]
     if: needs.prepare.outputs.tag != ''
     runs-on: ubuntu-22.04
+    environment: release-python
     permissions:
       contents: write
     steps:
