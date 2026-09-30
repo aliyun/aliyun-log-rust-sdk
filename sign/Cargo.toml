@@ -1,6 +1,6 @@
 [package]
 name = "aliyun-log-sdk-sign"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 authors = ["Aliyun Log Service"]
 description = "A crate to calculate signature for HTTP request to Aliyun Log Service."

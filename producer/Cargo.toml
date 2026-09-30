@@ -1,6 +1,6 @@
 [package]
 name = "aliyun-log-producer"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Aliyun Log Service"]
 description = "Thread-safe asynchronous batching producer for Alibaba Cloud Simple Log Service"
@@ -9,8 +9,8 @@ repository = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/master/producer
 readme = "README.md"
 
 [dependencies]
-aliyun-log-rust-sdk = { version = "0.3.2", path = "../client" }
-aliyun-log-sdk-protobuf = { version = "0.1.2", path = "../protobuf" }
+aliyun-log-rust-sdk = { version = "0.3.3", path = "../client" }
+aliyun-log-sdk-protobuf = { version = "0.1.3", path = "../protobuf" }
 async-trait = "0.1"
 bytes = "1.11.1"
 fastrand = "2"
