@@ -18,4 +18,4 @@
 
 日志在后台发送。需要确认是否成功时，请使用回调。日志可能乱序或重复；程序异常退出时，尚未发送的日志可能丢失。
 
-[Python 使用指南](../bindings/python/README.md)
+[Python 使用指南](https://github.com/aliyun/aliyun-log-python-producer)
