@@ -1,7 +1,5 @@
 # Python 使用示例
 
-[English](examples.md) · [快速开始](quickstart_cn.md) · [配置参考](configuration_cn.md) · [错误处理](errors_cn.md)
-
 以下示例使用[快速开始](quickstart_cn.md)中创建的 Producer 和 writer。
 
 ## 标记日志来源和主题
@@ -47,10 +45,10 @@ writer.send({"message": "hello"}, on_delivery=on_delivery)
 
 `flush()` 可能阻塞当前线程，仅在需要等待之前的日志发送结束时使用，无需每次发送后调用。
 
-| 需要做什么 | 调用方法 |
-| --- | --- |
-| 等之前的日志发送结束，然后继续发送 | `flush()`，不等待回调 |
-| 程序退出前，等日志发送和回调结束 | `close()`，之后不能再发送 |
+| 需要做什么                         | 调用方法                  |
+| ---------------------------------- | ------------------------- |
+| 等之前的日志发送结束，然后继续发送 | `flush()`，不等待回调     |
+| 程序退出前，等日志发送和回调结束   | `close()`，之后不能再发送 |
 
 用 `try/finally` 确保退出前关闭 Producer：
 
@@ -98,3 +96,10 @@ except EnqueueFullError:
 ```
 
 第二次发送仍可能失败，需要由应用处理。使用回调时，重试也要传入 `on_delivery`。
+
+## 相关文档
+
+- [快速开始](quickstart_cn.md)
+- [配置参考](configuration_cn.md)
+- [错误处理](errors_cn.md)
+- [回调用法](callbacks_cn.md)

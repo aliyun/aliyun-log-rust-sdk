@@ -1,7 +1,5 @@
 # Python usage examples
 
-[简体中文](examples_cn.md) · [Quick start](quickstart.md) · [Configuration](configuration.md) · [Error handling](errors.md)
-
 These examples use the Producer and writer created in the [quick start](quickstart.md).
 
 ## Label the source and topic
@@ -47,10 +45,10 @@ Keep callbacks short. Do not close or flush the same Producer from a callback.
 
 `flush()` may block the current thread. Use it only when you need to wait for earlier logs to finish sending, not after every send.
 
-| What you need | Method |
-| --- | --- |
+| What you need                                              | Method                                 |
+| ---------------------------------------------------------- | -------------------------------------- |
 | Wait for earlier logs to finish sending, then keep sending | `flush()`; does not wait for callbacks |
-| Wait for logs and callbacks before exiting | `close()`; stops further sends |
+| Wait for logs and callbacks before exiting                 | `close()`; stops further sends         |
 
 Use `try/finally` to close the Producer before exiting:
 
@@ -98,3 +96,10 @@ except EnqueueFullError:
 ```
 
 The second send can still fail and needs to be handled by your application. If you use a callback, pass `on_delivery` again when retrying.
+
+## Related documents
+
+- [Quick start](quickstart.md)
+- [Configuration](configuration.md)
+- [Error handling](errors.md)
+- [Callbacks](callbacks.md)

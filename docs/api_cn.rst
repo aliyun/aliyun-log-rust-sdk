@@ -1,16 +1,12 @@
 API 参考
 ========
 
-`English <api.rst>`_ | 简体中文
-
 本页面提供了阿里云日志服务 Rust SDK 中可用 API。
-
 
 Client 配置
 -------------
 
 有关客户端配置选项，请参阅 `Client <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html>`_ 与 `Config <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Config.html>`_ 文档。
-
 
 项目管理
 --------
@@ -43,7 +39,6 @@ Logstore 管理
 * `update_index <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.update_index>`_ - 更新索引配置以优化查询性能
 * `delete_index <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.delete_index>`_ - 删除索引配置
 * `get_index <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.get_index>`_ - 获取当前索引配置，包括全文索引和字段索引
-
 
 日志操作
 --------
@@ -83,5 +78,3 @@ Logstore 管理
 * `consumer_group_heartbeat <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.consumer_group_heartbeat>`_ - 发送心跳以维持分片所有权并获取分配的分片
 * `get_consumer_group_checkpoint <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.get_consumer_group_checkpoint>`_ - 获取消费位点，即分片的消费进度
 * `update_consumer_group_checkpoint <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.update_consumer_group_checkpoint>`_ - 更新消费位点
-
-

@@ -1,11 +1,11 @@
-# Language bindings
+# 多语言绑定
 
-Bindings expose the [Rust producer](../producer/README.md) to other languages.
+简体中文 | [English](README_EN.md)
 
-| Language | User guide | Development |
-| --- | --- | --- |
-| Python | [English](python/README.md) · [简体中文](python/README_CN.md) | [Build, test and release](python/docs/developing.md) |
+通过语言绑定，可在其他语言中使用 [Rust Producer](../producer/README.md)。
 
-Each binding keeps its package metadata and README at its root, documentation in
-`docs/`, native code in `src/`, and tests in `tests/`. The Python package sources
-are in `python/python/` and wheel tooling is in `python/ci/`.
+| 语言   | 使用指南                                                      | 开发指南                                              |
+| ------ | ------------------------------------------------------------- | ----------------------------------------------------- |
+| Python | [简体中文](python/README.md) · [English](python/README_EN.md) | [构建、测试和发布（英文）](python/docs/developing.md) |
+
+各绑定的根目录包含包元数据和 README；文档位于 `docs/`，原生代码位于 `src/`，测试位于 `tests/`。Python 包源码位于 `python/python/`，wheel 构建工具位于 `python/ci/`。

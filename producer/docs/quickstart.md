@@ -1,7 +1,5 @@
 # Rust quick start
 
-[简体中文](quickstart_cn.md) · [Overview](../README.md) · [Examples](examples.md) · [Configuration](configuration.md)
-
 ## 1. Add the dependency
 
 Run in your application directory:
@@ -40,3 +38,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 
 Run `cargo run --release`. The Producer starts automatically and sends logs in the background.
+
+## Related documents
+
+- [Examples](examples.md)
+- [Configuration](configuration.md)

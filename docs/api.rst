@@ -1,15 +1,12 @@
 API Reference
 =============
 
-English | `简体中文 <api_cn.rst>`_
-
 This page provides available APIs in the Aliyun Log Service Rust SDK.
 
 Client Configuration
 -----------------------
 
 For client configuration options, see the `Client <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html>`_ and `Config <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Config.html>`_ documentation.
-
 
 Project Management
 ------------------
@@ -42,7 +39,6 @@ APIs for managing logstore index, which enable efficient log querying and analys
 * `update_index <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.update_index>`_ - Update index configuration to optimize query performance
 * `delete_index <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.delete_index>`_ - Delete index configuration
 * `get_index <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.get_index>`_ - Get current index configuration including full-text and field indexes
-
 
 Log Operations
 --------------
@@ -82,4 +78,3 @@ Consumption
 * `consumer_group_heartbeat <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.consumer_group_heartbeat>`_ - Send heartbeat to maintain shard ownership and get assigned shards
 * `get_consumer_group_checkpoint <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.get_consumer_group_checkpoint>`_ - Get consumption checkpoint to track shard consumption progress
 * `update_consumer_group_checkpoint <https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/struct.Client.html#method.update_consumer_group_checkpoint>`_ - Update consumption checkpoint
-

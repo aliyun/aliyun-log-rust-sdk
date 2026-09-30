@@ -1,6 +1,6 @@
 [package]
 name = "aliyun-log-rust-sdk"
-version = "0.3.2"
+version = "0.3.3"
 edition = "2021"
 authors = ["Aliyun Log Service"]
 homepage = "https://github.com/aliyun/aliyun-log-rust-sdk/tree/master/client"
@@ -12,8 +12,8 @@ description = "Rust sdk for Aliyun Log Service"
 license = "MIT"
 
 [dependencies]
-aliyun-log-sdk-protobuf = { version = "0.1.2", path = "../protobuf" }
-aliyun-log-sdk-sign = { version = "0.2.1", path = "../sign" }
+aliyun-log-sdk-protobuf = { version = "0.1.3", path = "../protobuf" }
+aliyun-log-sdk-sign = { version = "0.2.2", path = "../sign" }
 thiserror = "2.0.12"
 anyhow = "1.0.98"
 lazy_static = "1.5.0"

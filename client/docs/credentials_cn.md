@@ -1,7 +1,5 @@
 # 动态凭证
 
-[English](credentials.md) | 简体中文 | [Client README](../README_CN.md)
-
 配置 credentials provider 后，临时凭证发生变化时无需重新创建客户端，SDK 会自动
 管理凭证刷新。使用下面的便捷创建函数，将返回的 provider 传给
 `Config::builder().credentials_provider()` 即可。
@@ -10,12 +8,12 @@
 
 目前内置的动态 provider 只有 ECS RAM Role，同时支持环境变量凭证、静态凭证和自定义 provider。
 
-| Provider | 创建函数 | 适用场景 |
-| --- | --- | --- |
-| ECS RAM Role | `ecs_ram_role_credentials_provider(role_name)` | 获取 ECS 实例绑定角色的临时凭证 |
-| 环境变量 | `environment_credentials_provider()` | 从环境变量读取固定凭证快照 |
-| 静态凭证 | `static_credentials_provider(access_key_id, access_key_secret, security_token)` | 使用固定凭证，不会续期临时凭证 |
-| 自定义 | 实现 `CredentialsProvider`，提供自己的创建函数 | 接入业务管理的凭证来源 |
+| Provider     | 创建函数                                                                        | 适用场景                        |
+| ------------ | ------------------------------------------------------------------------------- | ------------------------------- |
+| ECS RAM Role | `ecs_ram_role_credentials_provider(role_name)`                                  | 获取 ECS 实例绑定角色的临时凭证 |
+| 环境变量     | `environment_credentials_provider()`                                            | 从环境变量读取固定凭证快照      |
+| 静态凭证     | `static_credentials_provider(access_key_id, access_key_secret, security_token)` | 使用固定凭证，不会续期临时凭证  |
+| 自定义       | 实现 `CredentialsProvider`，提供自己的创建函数                                  | 接入业务管理的凭证来源          |
 
 ## ECS RAM Role
 
@@ -78,11 +76,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 无参 helper 会立即读取并校验以下环境变量：
 
-| 环境变量 | 要求 |
-| --- | --- |
-| `ALIBABA_CLOUD_ACCESS_KEY_ID` | 必须存在且非空 |
-| `ALIBABA_CLOUD_ACCESS_KEY_SECRET` | 必须存在且非空 |
-| `ALIBABA_CLOUD_SECURITY_TOKEN` | 可选，不存在或为空时按无 token 处理 |
+| 环境变量                          | 要求                                |
+| --------------------------------- | ----------------------------------- |
+| `ALIBABA_CLOUD_ACCESS_KEY_ID`     | 必须存在且非空                      |
+| `ALIBABA_CLOUD_ACCESS_KEY_SECRET` | 必须存在且非空                      |
+| `ALIBABA_CLOUD_SECURITY_TOKEN`    | 可选，不存在或为空时按无 token 处理 |
 
 在创建 provider 前设置环境变量：
 
@@ -147,85 +145,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## 自定义 Provider
 
-使用 SDK 导出的 `async_trait` 属性实现公开的 `CredentialsProvider` trait，
-其中 `fetch_credentials()` 返回 `Result<Credentials, CredentialsError>`。
-为自己的 provider 提供创建函数，再像内置 helper 一样将结果传给
-`.credentials_provider()`。API 约定请参见
-[trait 文档](https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/trait.CredentialsProvider.html)。
-下面的示例调用业务管理的 HTTPS 凭证服务，响应 JSON 包含 `SourceCredentials`
-所示字段，其中过期时间为 RFC 3339 字符串。请按自己的服务调整请求与响应结构。
-示例使用 `reqwest`、启用 `derive` 的 `serde`、`serde_json` 和 `chrono`。
+实现 `CredentialsProvider` 的异步方法 `fetch_credentials()`，返回 `Result<Credentials, CredentialsError>`，再通过 `.credentials_provider()` 配置。
 
-```rust
-use aliyun_log_rust_sdk::{
-    async_trait, Config, Credentials, CredentialsError, CredentialsProvider,
-};
-use serde::Deserialize;
+```rust,no_run
+use aliyun_log_rust_sdk::{async_trait, Config, Credentials, CredentialsError, CredentialsProvider};
+use std::time::{Duration, SystemTime};
 
-struct HttpCredentialsProvider {
-    endpoint: String,
-    client: reqwest::Client,
-}
-
-// JSON returned by your application's credentials service.
-#[derive(Deserialize)]
-struct SourceCredentials {
-    access_key_id: String,
-    access_key_secret: String,
-    security_token: Option<String>,
-    expiration: String,
-}
+struct MyCredentialsProvider;
 
 #[async_trait]
-impl CredentialsProvider for HttpCredentialsProvider {
+impl CredentialsProvider for MyCredentialsProvider {
     async fn fetch_credentials(&self) -> Result<Credentials, CredentialsError> {
-        let body = self.client.get(&self.endpoint).send().await
-            .map_err(CredentialsError::provider)?
-            .error_for_status().map_err(CredentialsError::provider)?
-            .bytes().await.map_err(CredentialsError::provider)?;
-        let source: SourceCredentials = serde_json::from_slice(&body)
-            .map_err(CredentialsError::provider)?;
-        let expiration = chrono::DateTime::parse_from_rfc3339(&source.expiration)
-            .map_err(CredentialsError::provider)?;
-        let mut credentials = Credentials::new(source.access_key_id, source.access_key_secret)?
-            .with_expiration(expiration.into());
-        if let Some(token) = source.security_token {
-            credentials = credentials.with_security_token(token);
-        }
-        Ok(credentials)
+        // 在这里执行你的获取凭证逻辑，并转换为 Credentials；过期时间使用凭证的真实值。
+        Ok(Credentials::new("access_key_id", "access_key_secret")?
+            .with_security_token("sts_token")
+            .with_expiration(SystemTime::UNIX_EPOCH + Duration::from_secs(2_000_000_000)))
     }
 }
 
-fn http_credentials_provider(endpoint: impl Into<String>) -> impl CredentialsProvider {
-    HttpCredentialsProvider { endpoint: endpoint.into(), client: reqwest::Client::new() }
-}
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let config = Config::builder()
-        .endpoint("cn-hangzhou.log.aliyuncs.com")
-        .credentials_provider(http_credentials_provider("https://credentials.example.com/current"))
-        .build()?;
-    Ok(())
-}
+let config = Config::builder()
+    .endpoint("cn-hangzhou.log.aliyuncs.com")
+    .credentials_provider(MyCredentialsProvider)
+    .build()?;
+# Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
-通过 `Credentials::new(access_key_id, access_key_secret)` 构造返回的凭证，
-然后按需设置可选字段：
+创建 Client 时不会获取凭证；首次发送请求时调用该方法，之后在临近过期且有请求时再次调用。返回的凭证由 SDK 自动缓存，无需额外缓存或定时刷新。
 
-| 字段 | API | 含义 |
-| --- | --- | --- |
-| AccessKey ID 和 Secret | `Credentials::new(id, secret)` | 必填，均不能为空 |
-| STS Token | `.with_security_token(token)` | 可选，空字符串按缺失处理 |
-| 过期时间 | `.with_expiration(SystemTime)` | 凭证来源给出的实际过期时间，仅无限期凭证才省略 |
-| 更新时间 | `.with_update_time(SystemTime)` | 可选元数据，不影响有效期 |
-
-应从凭证来源获取新凭证，并返回实际过期时间，不要在本地延长已有临时凭证的有效期。
-来源错误可通过 `CredentialsError::provider(error)` 转换。
-Provider 必须支持并发调用，并使用支持取消的异步 I/O。
-
-自定义 provider 无需实现 `Clone`；需要共享句柄时，可以使用 `Arc<YourProvider>`、
-`Arc<dyn CredentialsProvider>` 或 `SharedCredentialsProvider`。
-内置 ECS、环境变量和静态 provider 已支持 `Clone`。
+临时凭证应设置真实过期时间（`SystemTime`）。不使用 STS 时可省略 token。获取失败时返回 `CredentialsError`。
 
 ## 错误处理与配置约束
 

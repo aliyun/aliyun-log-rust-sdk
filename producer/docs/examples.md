@@ -1,16 +1,14 @@
 # Rust usage examples
 
-[简体中文](examples_cn.md) · [Quick start](quickstart.md) · [Configuration](configuration.md) · [Error handling](errors.md)
-
 These examples use the Producer and writer created in the [quick start](quickstart.md).
 
 ## Choose a send method
 
-| What you need | Method |
-| --- | --- |
-| Send a log | `send(log)` |
-| Set the source and topic | `send_with_options(log, options)` |
-| Receive the delivery result | `send_with_callback(log, callback)` |
+| What you need                       | Method                                                   |
+| ----------------------------------- | -------------------------------------------------------- |
+| Send a log                          | `send(log)`                                              |
+| Set the source and topic            | `send_with_options(log, options)`                        |
+| Receive the delivery result         | `send_with_callback(log, callback)`                      |
 | Set the source, topic, and callback | `send_with_options_and_callback(log, options, callback)` |
 
 ## Label the source and topic
@@ -61,10 +59,10 @@ Keep callbacks short. Do not close or flush the same Producer from a callback.
 
 `flush_blocking()` may block the current thread. Use it only when you need to wait for earlier logs to finish sending, not after every send.
 
-| What you need | Method |
-| --- | --- |
+| What you need                                              | Method                                          |
+| ---------------------------------------------------------- | ----------------------------------------------- |
 | Wait for earlier logs to finish sending, then keep sending | `flush_blocking()`; does not wait for callbacks |
-| Wait for logs and callbacks before exiting | `close_blocking()`; stops further sends |
+| Wait for logs and callbacks before exiting                 | `close_blocking()`; stops further sends         |
 
 ```rust
 producer.flush_blocking()?;
@@ -119,3 +117,10 @@ match writer.send(log!("message": "hello")) {
 
 The second send can still fail and needs to be handled by your application. If you use a callback, pass it again when retrying.
 In async code, use an async wait such as `tokio::time::sleep`.
+
+## Related documents
+
+- [Quick start](quickstart.md)
+- [Configuration](configuration.md)
+- [Error handling](errors.md)
+- [Callbacks](callbacks.md)

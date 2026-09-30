@@ -1,7 +1,5 @@
 # Rust 快速开始
 
-[English](quickstart.md) · [概览](../README_CN.md) · [使用示例](examples_cn.md) · [配置参考](configuration_cn.md)
-
 ## 1. 添加依赖
 
 在应用目录中执行：
@@ -40,3 +38,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 
 执行 `cargo run --release`。Producer 创建后自动启动，日志在后台发送。
+
+## 相关文档
+
+- [使用示例](examples_cn.md)
+- [配置参考](configuration_cn.md)

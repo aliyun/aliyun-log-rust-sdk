@@ -1,21 +1,22 @@
-# SLS Producer for Python
+# SLS Python Producer
 
-[简体中文](README_CN.md)
+简体中文 | [English](README_EN.md)
 
-Send logs to Alibaba Cloud Simple Log Service (SLS), with automatic batching,
-retries, and callbacks to check delivery results.
+将日志发送到阿里云日志服务（SLS），支持批量发送、失败重试和结果回调。
 
-Targets CPython 3.8+, PyPy 3.11, and GraalPy / Python 3.12–3.13 on macOS, Windows and Linux, with runtime-specific architecture coverage. See [platform support](docs/platforms.md) for details.
+构建目标包括 CPython 3.8+、PyPy 3.11 和 GraalPy / Python 3.12–3.13，覆盖 macOS、Windows、Linux；各解释器支持的架构有所不同。详细信息请参阅[平台支持](docs/platforms_cn.md)。
 
-| Guide | Contents |
-| --- | --- |
-| [Quick start](docs/quickstart.md) | Install, create a producer, send a log and close |
-| [Usage examples](docs/examples.md) | Callbacks, flush, shutdown, timestamps and multiple logstores |
-| [Configuration](docs/configuration.md) | Options, defaults and valid values |
-| [Error handling](docs/errors.md) | Error types, meanings, and suggested actions |
+| 文档                                 | 内容                                     |
+| ------------------------------------ | ---------------------------------------- |
+| [快速开始](docs/quickstart_cn.md)    | 安装、创建 Producer、发送日志和关闭      |
+| [回调](docs/callbacks_cn.md)         | 用最简单的回调查看投递结果               |
+| [使用示例](docs/examples_cn.md)      | 回调、flush、关闭、时间戳和多个 Logstore |
+| [动态凭证](docs/credentials_cn.md)   | 配置凭证来源，自动缓存和刷新             |
+| [配置参考](docs/configuration_cn.md) | 配置项、默认值和取值范围                 |
+| [错误处理](docs/errors_cn.md)        | 错误类型、含义和处理建议                 |
 
-The Producer starts when you create it. Reuse it and its writers while your application runs, and close it before exiting.
+创建 Producer 后即可发送日志，不需要手动启动。程序运行期间复用 Producer 和 writer，退出前关闭。
 
-Logs are sent in the background. Use a callback to check whether delivery succeeded. Logs may arrive out of order or more than once. Pending logs may be lost if the application crashes.
+日志在后台发送。需要确认是否成功时，请使用回调。日志可能乱序或重复；程序异常退出时，尚未发送的日志可能丢失。
 
-[Rust guide](../../producer/README.md)
+[Rust 使用指南](../../producer/README.md)
