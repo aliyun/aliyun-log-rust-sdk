@@ -1,6 +1,6 @@
 {
   "run_id": 36656034905,
-  "run_attempt": 1,
+  "run_attempt": 2,
   "url": "https://github.com/aliyun/aliyun-log-rust-sdk/actions/runs/36656034905",
   "commit": "43b3fdc7a1cd4c99f8d6b38494a8d6e8d5b35ffa",
   "platforms": {
@@ -71,7 +71,7 @@
       ]
     },
     "manylinux2014-i686": {
-      "status": "failing",
+      "status": "passing",
       "expected_jobs": [
         "wheel / manylinux2014-i686-abi3"
       ]
