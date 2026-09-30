@@ -1,20 +1,22 @@
 # aliyun-log-sdk-sign
 
-简体中文 | [English](README_EN.md)
+[简体中文](README.md)
 
-此 crate 用于生成阿里云日志服务 HTTP 请求的签名。
+## Description
 
-请参阅 [API 文档](https://docs.rs/aliyun-log-sdk-sign)。
+This crate is used to generate signature for aliyun log service.
 
-## 快速开始
+For more [Documents](https://docs.rs/aliyun-log-sdk-sign).
 
-添加依赖：
+## Quick Start
+
+Add this crate to your Cargo.toml using the following command:
 
 ```bash
 cargo add aliyun-log-sdk-sign
 ```
 
-使用示例：
+Use it in your code:
 
 ```rust
 use aliyun_log_sdk_sign::{sign_v1, QueryParams};

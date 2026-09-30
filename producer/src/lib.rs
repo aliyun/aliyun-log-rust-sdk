@@ -1,5 +1,39 @@
 //! A thread-safe asynchronous SLS producer with automatic batching and retries.
 //!
+//! # Quick start
+//!
+//! Add the dependency with `cargo add aliyun-log-producer`. Use an existing
+//! Project and Logstore, and set `ALIBABA_CLOUD_ACCESS_KEY_ID` and
+//! `ALIBABA_CLOUD_ACCESS_KEY_SECRET` to credentials authorized to write to them.
+//! Replace the endpoint, project and logstore below with your own values.
+//!
+//! ```rust,no_run
+//! use aliyun_log_producer::{log, Producer, ProducerConfig};
+//! use std::env;
+//!
+//! fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     let producer = Producer::create(
+//!         ProducerConfig::default()
+//!             .with_endpoint("cn-hangzhou.log.aliyuncs.com")
+//!             .with_access_key(
+//!                 env::var("ALIBABA_CLOUD_ACCESS_KEY_ID")?,
+//!                 env::var("ALIBABA_CLOUD_ACCESS_KEY_SECRET")?,
+//!             ),
+//!     )?;
+//!     let writer = producer.writer("my-project", "my-logstore")?;
+//!     writer.send(log!("message": "hello SLS"))?;
+//!     producer.close_blocking()?;
+//!     Ok(())
+//! }
+//! ```
+//!
+//! No caller async runtime is required. Reuse the producer and writer while your
+//! application runs; call [`Producer::close_blocking`] at shutdown to drain pending
+//! logs and callbacks. To check each delivery result, use
+//! [`LogstoreWriter::send_with_callback`]; a successful `send` only means the log was queued.
+//!
+//! # Lifecycle and delivery
+//!
 //! Create a producer for one endpoint, clone writers across threads, then explicitly
 //! complete `close` or `close_blocking` before process exit. Admission is not an acknowledgement from SLS.
 //! Delivery is unordered and retries may duplicate logs. No disk persistence is used.
@@ -196,5 +230,13 @@ impl BaseProducer {
 mod tests;
 
 #[cfg(doctest)]
-#[doc = include_str!("../README.md")]
+#[doc = include_str!("../README_EN.md")]
 mod readme {}
+
+#[cfg(doctest)]
+#[doc = include_str!("../docs/callbacks.md")]
+mod callbacks_guide {}
+
+#[cfg(doctest)]
+#[doc = include_str!("../docs/credentials.md")]
+mod credentials_guide {}

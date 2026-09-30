@@ -1,7 +1,5 @@
 # Python quick start
 
-[简体中文](quickstart_cn.md) · [Overview](../README.md) · [Examples](examples.md) · [Configuration](configuration.md)
-
 ## 1. Install
 
 Use Python (CPython) 3.8 or later:
@@ -19,7 +17,7 @@ Replace the endpoint, project and logstore below, and save this as `send.py`:
 ```python
 import os
 from time import time
-from aliyun_log_producer import Producer, ProducerConfig
+from aliyun_log_producer import Producer, ProducerConfig, ProducerError
 
 
 config = ProducerConfig(
@@ -29,12 +27,23 @@ config = ProducerConfig(
 )
 producer = Producer(config)
 writer = producer.writer("my-project", "my-logstore")
-writer.send({"message": "hello SLS"})
-now = int(time())
-writer.send({"level": "INFO", "message": "another log"}, time=now)
+# Possible send exceptions: see the Error handling guide (errors.md).
+try:
+    writer.send({"message": "hello SLS"})
+    now = int(time())
+    writer.send({"level": "INFO", "message": "another log"}, time=now)
+except ProducerError as exc:
+    print("Log submission failed:", exc)
 
 # Reuse the producer while the application runs; close at shutdown to wait for delivery.
 producer.close()
 ```
 
 Run `python send.py`. The Producer starts automatically and sends logs in the background.
+
+See [Error handling](errors.md) for possible exceptions and how to handle them.
+
+## Related documents
+
+- [Examples](examples.md)
+- [Configuration](configuration.md)

@@ -1,16 +1,14 @@
 # Rust 使用示例
 
-[English](examples.md) · [快速开始](quickstart_cn.md) · [配置参考](configuration_cn.md) · [错误处理](errors_cn.md)
-
 以下示例使用[快速开始](quickstart_cn.md)中创建的 Producer 和 writer。
 
 ## 选择发送方法
 
-| 需要做什么 | 方法 |
-| --- | --- |
-| 发送日志 | `send(log)` |
-| 设置来源和主题 | `send_with_options(log, options)` |
-| 获取发送结果 | `send_with_callback(log, callback)` |
+| 需要做什么               | 方法                                                     |
+| ------------------------ | -------------------------------------------------------- |
+| 发送日志                 | `send(log)`                                              |
+| 设置来源和主题           | `send_with_options(log, options)`                        |
+| 获取发送结果             | `send_with_callback(log, callback)`                      |
 | 同时设置来源、主题和回调 | `send_with_options_and_callback(log, options, callback)` |
 
 ## 标记日志来源和主题
@@ -61,10 +59,10 @@ writer.send_with_callback(log!("message": "hello"), |result| {
 
 `flush_blocking()` 可能阻塞当前线程，仅在需要等待之前的日志发送结束时使用，无需每次发送后调用。
 
-| 需要做什么 | 调用方法 |
-| --- | --- |
-| 等之前的日志发送结束，然后继续发送 | `flush_blocking()`，不等待回调 |
-| 程序退出前，等日志发送和回调结束 | `close_blocking()`，之后不能再发送 |
+| 需要做什么                         | 调用方法                           |
+| ---------------------------------- | ---------------------------------- |
+| 等之前的日志发送结束，然后继续发送 | `flush_blocking()`，不等待回调     |
+| 程序退出前，等日志发送和回调结束   | `close_blocking()`，之后不能再发送 |
 
 ```rust
 producer.flush_blocking()?;
@@ -119,3 +117,10 @@ match writer.send(log!("message": "hello")) {
 
 第二次发送仍可能失败，需要由应用处理。使用回调时，重试也要传入回调。
 异步代码应使用异步等待，例如 `tokio::time::sleep`。
+
+## 相关文档
+
+- [快速开始](quickstart_cn.md)
+- [配置参考](configuration_cn.md)
+- [错误处理](errors_cn.md)
+- [回调用法](callbacks_cn.md)

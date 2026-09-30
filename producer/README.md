@@ -1,20 +1,21 @@
-# SLS Producer for Rust
+# SLS Rust Producer
 
-[简体中文](README_CN.md)
+简体中文 | [English](README_EN.md)
 
-Send logs to Alibaba Cloud Simple Log Service (SLS), with automatic batching,
-retries, and callbacks to check delivery results.
+将日志发送到阿里云日志服务（SLS），支持批量发送、失败重试和结果回调。
 
-| Guide | Contents |
-| --- | --- |
-| [Quick start](docs/quickstart.md) | Install, create a producer, send a log and close |
-| [Usage examples](docs/examples.md) | Callbacks, flush, shutdown, timestamps and multiple logstores |
-| [Configuration](docs/configuration.md) | Options, defaults and valid values |
-| [Error handling](docs/errors.md) | Error types, meanings, and suggested actions |
-| [Metrics](docs/metrics.md) | Track successful sends, failures, and log size |
+| 文档                                 | 内容                                     |
+| ------------------------------------ | ---------------------------------------- |
+| [快速开始](docs/quickstart_cn.md)    | 安装、创建 Producer、发送日志和关闭      |
+| [回调](docs/callbacks_cn.md)         | 用最简单的回调查看投递结果               |
+| [使用示例](docs/examples_cn.md)      | 回调、flush、关闭、时间戳和多个 Logstore |
+| [动态凭证](docs/credentials_cn.md)   | 配置凭证来源，自动缓存和刷新             |
+| [配置参考](docs/configuration_cn.md) | 配置项、默认值和取值范围                 |
+| [错误处理](docs/errors_cn.md)        | 错误类型、含义和处理建议                 |
+| [指标参考](docs/metrics_cn.md)       | 接入统计，查看发送成功、失败和日志大小   |
 
-The Producer starts when you create it. Reuse it and its writers while your application runs, and close it before exiting.
+创建 Producer 后即可发送日志，不需要手动启动。程序运行期间复用 Producer 和 writer，退出前关闭。
 
-Logs are sent in the background. Use a callback to check whether delivery succeeded. Logs may arrive out of order or more than once. Pending logs may be lost if the application crashes.
+日志在后台发送。需要确认是否成功时，请使用回调。日志可能乱序或重复；程序异常退出时，尚未发送的日志可能丢失。
 
-[Python guide](../bindings/python/README.md)
+[Python 使用指南](../bindings/python/README.md)

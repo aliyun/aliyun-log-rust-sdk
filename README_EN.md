@@ -1,26 +1,24 @@
-# 阿里云日志服务 Rust SDK
+# Rust SDK for Aliyun Log Service
 
-简体中文 | [English](README_EN.md)
+English | [简体中文](README.md)
 
-这里是阿里云日志服务官方 RUST SDK 项目。
-
-支持异步攒批、自动重试、callback 和优雅退出的写入接口，见 [Producer 使用说明](producer/README.md)。
+This is Rust SDK for accessing Aliyun Log Service.
 
 [![crates-badge](https://img.shields.io/crates/v/aliyun-log-rust-sdk.svg)](https://crates.io/crates/aliyun-log-rust-sdk) ![mit-badge](https://img.shields.io/badge/license-MIT-blue.svg) [![Ci](https://github.com/aliyun/aliyun-log-rust-sdk/actions/workflows/rust.yml/badge.svg)](https://github.com/aliyun/aliyun-log-rust-sdk/actions/workflows/rust.yml)
 
-[API列表](docs/api_cn.rst) | [文档](https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/)
+[API List](docs/api.rst) | [Docs](https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/)
 
-## 快速开始
+## Quick Start
 
-### 1. 添加依赖
+### 1. Add Dependency
 
-使用以下命令将此 crate 添加到你的 Cargo.toml：
+Add this crate to your Cargo.toml using the following command:
 
 ```bash
 cargo add aliyun-log-rust-sdk
 ```
 
-### 2. 创建客户端
+### 2. Create a Client
 
 ```rust
 use aliyun_log_rust_sdk::{Client, Config, FromConfig};
@@ -32,14 +30,14 @@ let config = Config::builder()
 let client = Client::from_config(config)?;
 ```
 
-### 3. 写入日志
+### 3. Write Logs
 
 ```rust
 use aliyun_log_sdk_protobuf::{Log, LogGroup};
 
 let mut log = Log::from_unixtime(chrono::Utc::now().timestamp() as u32);
 log.add_content_kv("level", "info")
-    .add_content_kv("message", "应用启动");
+    .add_content_kv("message", "Application started");
 
 let mut log_group = LogGroup::new();
 log_group.add_log(log);
@@ -50,7 +48,7 @@ client.put_logs("my-project", "my-logstore")
     .await?;
 ```
 
-### 4. 查询日志
+### 4. Query Logs
 
 ```rust
 use chrono::Utc;
@@ -68,11 +66,15 @@ let resp = client.get_logs("my-project", "my-logstore")
     .await?;
 ```
 
-## 凭证配置
+## Credentials
 
-支持 ECS RAM Role、环境变量、静态凭证和自定义凭证来源。可用 provider、
-前提条件和使用示例请参见[动态凭证指南](client/docs/credentials_cn.md)。
+For asynchronous buffered writes, batching, retries and callbacks, see the
+[producer crate](producer/README_EN.md).
 
-## 贡献
+Use ECS RAM Role, environment variables, static credentials, or a custom credentials
+source. See the [dynamic credentials guide](client/docs/credentials.md)
+for available providers, prerequisites, and examples.
 
-欢迎贡献！请随时提交 Pull Request。
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.

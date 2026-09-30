@@ -1,7 +1,5 @@
 # Dynamic Credentials
 
-English | [简体中文](credentials_cn.md) | [Client README](../README.md)
-
 Configure a credentials provider to obtain credentials without replacing the client
 when temporary credentials change. The SDK manages refreshes automatically. Use the
 creation functions below and pass their result to `Config::builder().credentials_provider()`.
@@ -11,12 +9,12 @@ creation functions below and pass their result to `Config::builder().credentials
 ECS RAM Role is currently the only built-in dynamic provider. Environment credentials,
 static credentials, and custom providers are also supported.
 
-| Provider | Creation function | Use case |
-| --- | --- | --- |
-| ECS RAM Role | `ecs_ram_role_credentials_provider(role_name)` | Temporary credentials for a role attached to an ECS instance |
-| Environment | `environment_credentials_provider()` | Read a fixed credentials snapshot from environment variables |
-| Static | `static_credentials_provider(access_key_id, access_key_secret, security_token)` | A fixed set of credentials; does not renew temporary credentials |
-| Custom | Implement `CredentialsProvider` and expose your own creation function | A credentials source managed by your application |
+| Provider     | Creation function                                                               | Use case                                                         |
+| ------------ | ------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| ECS RAM Role | `ecs_ram_role_credentials_provider(role_name)`                                  | Temporary credentials for a role attached to an ECS instance     |
+| Environment  | `environment_credentials_provider()`                                            | Read a fixed credentials snapshot from environment variables     |
+| Static       | `static_credentials_provider(access_key_id, access_key_secret, security_token)` | A fixed set of credentials; does not renew temporary credentials |
+| Custom       | Implement `CredentialsProvider` and expose your own creation function           | A credentials source managed by your application                 |
 
 ## ECS RAM Role
 
@@ -83,11 +81,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 The default helper immediately reads and validates these variables:
 
-| Variable | Requirement |
-| --- | --- |
-| `ALIBABA_CLOUD_ACCESS_KEY_ID` | Required and nonempty |
-| `ALIBABA_CLOUD_ACCESS_KEY_SECRET` | Required and nonempty |
-| `ALIBABA_CLOUD_SECURITY_TOKEN` | Optional; missing or empty means no token |
+| Variable                          | Requirement                               |
+| --------------------------------- | ----------------------------------------- |
+| `ALIBABA_CLOUD_ACCESS_KEY_ID`     | Required and nonempty                     |
+| `ALIBABA_CLOUD_ACCESS_KEY_SECRET` | Required and nonempty                     |
+| `ALIBABA_CLOUD_SECURITY_TOKEN`    | Optional; missing or empty means no token |
 
 Set the variables before creating the provider:
 
@@ -155,87 +153,34 @@ remain supported.
 
 ## Custom Providers
 
-Implement the public `CredentialsProvider` trait using the SDK's `async_trait`
-attribute. Its `fetch_credentials()` method returns
-`Result<Credentials, CredentialsError>`. Expose a creation function for your provider,
-then pass its result to `.credentials_provider()` just like the built-in helpers.
-See the [trait example](https://docs.rs/aliyun-log-rust-sdk/latest/aliyun_log_rust_sdk/trait.CredentialsProvider.html)
-for the API contract. This example calls an application-managed HTTPS credentials
-service that returns the JSON fields shown by `SourceCredentials`, including an
-RFC 3339 expiration. Adapt the request and response to your service. The example
-uses `reqwest`, `serde` with `derive`, `serde_json`, and `chrono`.
+Implement the async `CredentialsProvider::fetch_credentials()` method returning `Result<Credentials, CredentialsError>`, then configure it with `.credentials_provider()`.
 
-```rust
-use aliyun_log_rust_sdk::{
-    async_trait, Config, Credentials, CredentialsError, CredentialsProvider,
-};
-use serde::Deserialize;
+```rust,no_run
+use aliyun_log_rust_sdk::{async_trait, Config, Credentials, CredentialsError, CredentialsProvider};
+use std::time::{Duration, SystemTime};
 
-struct HttpCredentialsProvider {
-    endpoint: String,
-    client: reqwest::Client,
-}
-
-// JSON returned by your application's credentials service.
-#[derive(Deserialize)]
-struct SourceCredentials {
-    access_key_id: String,
-    access_key_secret: String,
-    security_token: Option<String>,
-    expiration: String,
-}
+struct MyCredentialsProvider;
 
 #[async_trait]
-impl CredentialsProvider for HttpCredentialsProvider {
+impl CredentialsProvider for MyCredentialsProvider {
     async fn fetch_credentials(&self) -> Result<Credentials, CredentialsError> {
-        let body = self.client.get(&self.endpoint).send().await
-            .map_err(CredentialsError::provider)?
-            .error_for_status().map_err(CredentialsError::provider)?
-            .bytes().await.map_err(CredentialsError::provider)?;
-        let source: SourceCredentials = serde_json::from_slice(&body)
-            .map_err(CredentialsError::provider)?;
-        let expiration = chrono::DateTime::parse_from_rfc3339(&source.expiration)
-            .map_err(CredentialsError::provider)?;
-        let mut credentials = Credentials::new(source.access_key_id, source.access_key_secret)?
-            .with_expiration(expiration.into());
-        if let Some(token) = source.security_token {
-            credentials = credentials.with_security_token(token);
-        }
-        Ok(credentials)
+        // Fetch credentials here and convert them to Credentials, using their actual expiration.
+        Ok(Credentials::new("access_key_id", "access_key_secret")?
+            .with_security_token("sts_token")
+            .with_expiration(SystemTime::UNIX_EPOCH + Duration::from_secs(2_000_000_000)))
     }
 }
 
-fn http_credentials_provider(endpoint: impl Into<String>) -> impl CredentialsProvider {
-    HttpCredentialsProvider { endpoint: endpoint.into(), client: reqwest::Client::new() }
-}
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let config = Config::builder()
-        .endpoint("cn-hangzhou.log.aliyuncs.com")
-        .credentials_provider(http_credentials_provider("https://credentials.example.com/current"))
-        .build()?;
-    Ok(())
-}
+let config = Config::builder()
+    .endpoint("cn-hangzhou.log.aliyuncs.com")
+    .credentials_provider(MyCredentialsProvider)
+    .build()?;
+# Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
-Use `Credentials::new(access_key_id, access_key_secret)` to construct the returned
-credentials, then add optional fields:
+The method is called for the first outgoing request, then for later requests near expiration. Creating the Client does not fetch credentials. The SDK caches returned credentials automatically; no additional cache or refresh timer is needed.
 
-| Field | API | Meaning |
-| --- | --- | --- |
-| AccessKey ID and secret | `Credentials::new(id, secret)` | Both required and nonempty |
-| STS token | `.with_security_token(token)` | Optional; an empty token is treated as absent |
-| Expiration | `.with_expiration(SystemTime)` | The actual expiration from the credentials source; omit only for nonexpiring credentials |
-| Update time | `.with_update_time(SystemTime)` | Optional metadata; does not control validity |
-
-Return fresh credentials from the source, including their actual expiration.
-Do not extend the expiration of an existing temporary credential locally.
-Convert your source's errors with `CredentialsError::provider(error)`.
-Providers must support concurrent calls and cancellation-safe async I/O.
-
-Providers need not implement `Clone`. Use `Arc<YourProvider>`,
-`Arc<dyn CredentialsProvider>`, or `SharedCredentialsProvider` when a shared handle
-is useful. The built-in ECS, environment, and static providers already implement `Clone`.
+Set the actual expiration (`SystemTime`) for temporary credentials. Omit the token when not using STS. Return `CredentialsError` if fetching fails.
 
 ## Error Handling and Configuration
 
