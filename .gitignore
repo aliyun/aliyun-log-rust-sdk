@@ -16,5 +16,6 @@ AGENTS.md
 
 # Local design notes.
 /producer/docs/design/
-/bindings/python/docs/design.md
-/bindings/python/docs/developing.md
+
+# Historical local Python design notes (not part of the migrated package).
+/bindings/python/

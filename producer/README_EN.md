@@ -19,4 +19,4 @@ The Producer starts when you create it. Reuse it and its writers while your appl
 
 Logs are sent in the background. Use a callback to check whether delivery succeeded. Logs may arrive out of order or more than once. Pending logs may be lost if the application crashes.
 
-[Python guide](../bindings/python/README_EN.md)
+[Python guide](https://github.com/aliyun/aliyun-log-python-producer/blob/master/README_EN.md)
