@@ -18,6 +18,12 @@ Add this crate to your Cargo.toml using the following command:
 cargo add aliyun-log-rust-sdk
 ```
 
+The default TLS backend is `native-tls` to preserve existing behavior. For cross-compilation or rustls, disable default features and enable `rustls-tls` explicitly:
+
+```toml
+aliyun-log-rust-sdk = { version = "0.3.3", default-features = false, features = ["rustls-tls"] }
+```
+
 ### 2. Create a Client
 
 ```rust
