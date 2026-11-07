@@ -20,6 +20,12 @@
 cargo add aliyun-log-rust-sdk
 ```
 
+默认 TLS 后端为 `native-tls`，保持现有行为。交叉编译或希望使用 rustls 时，关闭默认 feature 并显式启用 `rustls-tls`：
+
+```toml
+aliyun-log-rust-sdk = { version = "0.3.3", default-features = false, features = ["rustls-tls"] }
+```
+
 ### 2. 创建客户端
 
 ```rust
